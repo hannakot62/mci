@@ -30,22 +30,19 @@ export function usePosts(): UsePostsReturn {
     refreshPosts();
   }, [refreshPosts]);
 
-  const createPost = useCallback(
-    async (payload: CreatePostPayload) => {
-      setLoading(true);
-      try {
-        setError(null);
-        const newPost = await postsAPI.create(payload);
-        setPosts((prev) => [...prev, newPost]);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to create post');
-        throw err;
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+  const createPost = useCallback(async (payload: CreatePostPayload) => {
+    setLoading(true);
+    try {
+      setError(null);
+      const newPost = await postsAPI.create(payload);
+      setPosts((prev) => [...prev, newPost]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create post');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const deletePost = useCallback(async (id: number) => {
     try {

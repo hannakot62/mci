@@ -26,20 +26,13 @@ export function PostCard({ post, onDelete }: PostCardProps): React.ReactElement 
     <article className="post-card">
       <div className="post-card__header">
         <h2 className="post-card__title">{post.title}</h2>
-        <time className="post-card__date">
-          {new Date(post.createdAt).toLocaleString()}
-        </time>
+        <time className="post-card__date">{new Date(post.createdAt).toLocaleString()}</time>
       </div>
 
       {post.content && <p className="post-card__content">{post.content}</p>}
 
       <div className="post-card__footer">
-        <Button
-          variant="danger"
-          size="sm"
-          onClick={handleDelete}
-          disabled={deleting}
-        >
+        <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleting}>
           {deleting ? 'Deleting...' : 'Delete'}
         </Button>
       </div>

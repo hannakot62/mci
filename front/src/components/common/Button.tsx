@@ -15,10 +15,7 @@ export function Button({
   ...props
 }: ButtonProps): React.ReactElement {
   return (
-    <button
-      className={`btn btn--${variant} btn--${size} ${className || ''}`}
-      {...props}
-    >
+    <button className={`btn btn--${variant} btn--${size} ${className || ''}`} {...props}>
       {children}
     </button>
   );

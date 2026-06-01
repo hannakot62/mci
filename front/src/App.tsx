@@ -13,12 +13,7 @@ function App(): React.ReactElement {
 
       <PostForm onSubmit={createPost} loading={loading} />
 
-      <PostList
-        posts={posts}
-        loading={loading}
-        error={error}
-        onDelete={deletePost}
-      />
+      <PostList posts={posts} loading={loading} error={error} onDelete={deletePost} />
     </main>
   );
 }
