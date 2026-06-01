@@ -1,0 +1,314 @@
+@import './variables.scss';
+
+// ============================================
+// LAYOUT МИКСИНЫ
+// ============================================
+
+@mixin container {
+  width: 100%;
+  max-width: $container-max-width;
+  margin: 0 auto;
+  padding: 0 spacing(lg);
+}
+
+// ============================================
+// FLEX МИКСИНЫ
+// ============================================
+
+@mixin flex($direction: row, $justify: flex-start, $align: stretch, $gap: 0) {
+  display: flex;
+  flex-direction: $direction;
+  justify-content: $justify;
+  align-items: $align;
+  @if $gap > 0 {
+    gap: $gap;
+  }
+}
+
+@mixin flex-center {
+  @include flex(row, center, center);
+}
+
+@mixin flex-between {
+  @include flex(row, space-between, center);
+}
+
+@mixin flex-col($gap: 0) {
+  @include flex(column, flex-start, stretch, $gap);
+}
+
+@mixin flex-col-center($gap: 0) {
+  @include flex(column, center, center, $gap);
+}
+
+// ============================================
+// GRID МИКСИНЫ
+// ============================================
+
+@mixin grid($columns: 1, $gap: spacing(lg)) {
+  display: grid;
+  grid-template-columns: repeat($columns, 1fr);
+  gap: $gap;
+}
+
+// ============================================
+// РАЗМЕРЫ
+// ============================================
+
+@mixin size($width, $height: $width) {
+  width: $width;
+  height: $height;
+}
+
+@mixin aspect-ratio($width, $height) {
+  aspect-ratio: $width / $height;
+}
+
+// ============================================
+// ТИПОГРАФИЯ
+// ============================================
+
+@mixin font($size: base, $weight: 400, $lh: normal, $color: inherit) {
+  font-size: font-size($size);
+  font-weight: $weight;
+  line-height: line-height($lh);
+  color: $color;
+}
+
+@mixin heading($size: 2xl, $weight: 600, $color: color(dark)) {
+  @include font($size, $weight, tight, $color);
+  margin: 0;
+}
+
+@mixin text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin text-truncate-lines($lines: 2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+}
+
+// ============================================
+// ОТСТУПЫ
+// ============================================
+
+@mixin padding($top, $right: $top, $bottom: $top, $left: $right) {
+  padding: $top $right $bottom $left;
+}
+
+@mixin margin($top, $right: $top, $bottom: $top, $left: $right) {
+  margin: $top $right $bottom $left;
+}
+
+// ============================================
+// КНОПКИ
+// ============================================
+
+@mixin button-base($padding: spacing(md) spacing(lg)) {
+  @include padding($padding);
+  border: none;
+  border-radius: radius(sm);
+  cursor: pointer;
+  font-family: $font-family;
+  @include font(sm, 500);
+  transition: all $transition-base;
+  user-select: none;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+@mixin button($bg: color(primary), $color: color(white), $padding: spacing(md) spacing(lg)) {
+  @include button-base($padding);
+  background: $bg;
+  color: $color;
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: shadow(md);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+}
+
+@mixin button-outline($bg: transparent, $color: color(primary), $border: color(primary)) {
+  @include button-base();
+  background: $bg;
+  color: $color;
+  border: 1px solid $border;
+
+  &:hover:not(:disabled) {
+    background: rgba($color, 0.05);
+  }
+}
+
+@mixin button-ghost($color: color(primary)) {
+  @include button-base();
+  background: transparent;
+  color: $color;
+
+  &:hover:not(:disabled) {
+    background: rgba($color, 0.1);
+  }
+}
+
+// ============================================
+// INPUT И FORM
+// ============================================
+
+@mixin input-base {
+  width: 100%;
+  padding: spacing(md);
+  border: 1px solid color(gray-border);
+  border-radius: radius(sm);
+  font-family: $font-family;
+  @include font(sm);
+  transition: all $transition-base;
+
+  &::placeholder {
+    color: color(gray-text);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: color(primary);
+    box-shadow: 0 0 0 2px rgba(color(primary), 0.1);
+  }
+
+  &:disabled {
+    background: color(gray-lighter);
+    cursor: not-allowed;
+  }
+}
+
+@mixin input-error {
+  border-color: color(danger);
+  box-shadow: 0 0 0 2px rgba(color(danger), 0.1);
+}
+
+// ============================================
+// КАРТОЧКИ И БОКСЫ
+// ============================================
+
+@mixin card($shadow: md, $padding: spacing(lg), $bg: color(white)) {
+  background: $bg;
+  border: 1px solid color(gray-border);
+  border-radius: radius(md);
+  padding: $padding;
+  @if $shadow {
+    box-shadow: shadow($shadow);
+  }
+}
+
+@mixin box($padding: spacing(lg), $bg: color(gray-lighter), $border-radius: radius(md)) {
+  padding: $padding;
+  background: $bg;
+  border-radius: $border-radius;
+}
+
+// ============================================
+// БОРДЕРЫ И ЛИНИИ
+// ============================================
+
+@mixin divider($color: color(gray-border), $thickness: 1px, $direction: horizontal) {
+  @if $direction == horizontal {
+    border-bottom: $thickness solid $color;
+  } @else {
+    border-right: $thickness solid $color;
+  }
+}
+
+// ============================================
+// АБСОЛЮТНОЕ ПОЗИЦИОНИРОВАНИЕ
+// ============================================
+
+@mixin absolute-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@mixin absolute-cover {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+// ============================================
+// АДАПТИВНОСТЬ
+// ============================================
+
+@mixin media($breakpoint) {
+  @media (max-width: breakpoint($breakpoint)) {
+    @content;
+  }
+}
+
+@mixin media-min($breakpoint) {
+  @media (min-width: breakpoint($breakpoint)) {
+    @content;
+  }
+}
+
+// ============================================
+// СКРЫТИЕ И ВИДИМОСТЬ
+// ============================================
+
+@mixin sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+// ============================================
+// АНИМАЦИИ
+// ============================================
+
+@mixin fade-in($duration: 0.3s) {
+  animation: fadeIn $duration ease-in-out;
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+@mixin slide-in($direction: top, $duration: 0.3s) {
+  @if $direction == top {
+    animation: slideInTop $duration ease-out;
+    @keyframes slideInTop {
+      from {
+        transform: translateY(-20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+  }
+}

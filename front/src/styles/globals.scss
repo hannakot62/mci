@@ -1,0 +1,103 @@
+@import './variables.scss';
+@import './mixins.scss';
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: $font-family;
+  @include font(base, 400, normal, color(dark));
+  background: color(white);
+  color: color(dark);
+}
+
+main {
+  min-height: 100vh;
+}
+
+// ============================================
+// БАЗОВЫЕ ЭЛЕМЕНТЫ
+// ============================================
+
+h1, h2, h3, h4, h5, h6 {
+  margin-bottom: spacing(lg);
+  font-weight: 600;
+  line-height: line-height(tight);
+}
+
+h1 {
+  @include font(3xl);
+}
+
+h2 {
+  @include font(2xl);
+}
+
+h3 {
+  @include font(xl);
+}
+
+p {
+  margin-bottom: spacing(md);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+a {
+  color: color(primary);
+  text-decoration: none;
+  transition: color $transition-base;
+
+  &:hover {
+    color: color(primary-dark);
+  }
+}
+
+// ============================================
+// ФОРМА
+// ============================================
+
+form {
+  @include flex-col(spacing(md));
+}
+
+label {
+  @include font(sm, 500, normal, color(dark));
+  display: block;
+  margin-bottom: spacing(sm);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  @include input-base;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+// ============================================
+// УТИЛИТЫ
+// ============================================
+
+.container {
+  @include container;
+}
+
+.sr-only {
+  @include sr-only;
+}

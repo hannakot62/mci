@@ -1,0 +1,14 @@
+{
+  "root": true,
+  "ignorePatterns": ["node_modules", "dist", "build"],
+  "overrides": [
+    {
+      "files": ["front/**/*.{ts,tsx}"],
+      "extends": ["./front/.eslintrc.json"]
+    },
+    {
+      "files": ["back/**/*.ts"],
+      "extends": ["./back/.eslintrc.json"]
+    }
+  ]
+}
