@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
-let prisma: PrismaClient;
+let prisma: PrismaClient | undefined;
 
 export const getPrismaClient = (): PrismaClient => {
   if (!prisma) {
@@ -14,3 +14,4 @@ export const disconnectDatabase = async (): Promise<void> => {
     await prisma.$disconnect();
   }
 };
+

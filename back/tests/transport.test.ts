@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
-import { disconnectDatabase } from '../src/config/database';
-import { clearTimings } from '../src/plugins/timer';
+import { disconnectDatabase } from '../src/infrastructure/db/prisma';
+import { clearTimings } from '../src/modules/metrics/timer.store';
 import { resetCargoData } from './helpers';
 
 describe('Transport API integration', () => {

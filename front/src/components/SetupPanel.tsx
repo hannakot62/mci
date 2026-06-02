@@ -109,7 +109,7 @@ export function SetupPanel({ onGenerated }: SetupPanelProps): React.ReactElement
           <input
             type="number"
             min={1}
-            max={500}
+            max={50000}
             value={goodsCount}
             onChange={(e) => setGoodsCount(Number(e.target.value))}
           />
@@ -120,7 +120,7 @@ export function SetupPanel({ onGenerated }: SetupPanelProps): React.ReactElement
           <input
             type="range"
             min={1}
-            max={4}
+            max={20}
             value={packingDepth}
             onChange={(e) => setPackingDepth(Number(e.target.value))}
           />

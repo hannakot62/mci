@@ -121,6 +121,25 @@ function buildFlowElements(transport: TransportDetail): { nodes: Node[]; edges: 
         edges.push({ id: `${pkg.id}-${good.id}`, source: pkg.id, target: good.id });
       }
 
+      const hiddenGoods = pkg.goodsCount - pkg.goods.length;
+      if (hiddenGoods > 0) {
+        const summaryId = `${pkg.id}-goods-more`;
+        nodes.push({
+          id: summaryId,
+          type: 'default',
+          data: {
+            label: (
+              <div className="flow-node goods-node goods-summary-node">
+                <strong>+{hiddenGoods} more</strong>
+                <small>{pkg.goodsTruncated ? 'preview only' : 'not loaded'}</small>
+              </div>
+            ),
+          },
+          position: { x: 0, y: 0 },
+        });
+        edges.push({ id: `${pkg.id}-${summaryId}`, source: pkg.id, target: summaryId });
+      }
+
       walkPackaging(pkg.id, pkg.children);
     }
   };

@@ -34,6 +34,9 @@ model TransportUnit {
 
   packagingUnits      PackagingUnit[]
   createdAt           DateTime        @default(now())
+
+  @@index([departureLocationId])
+  @@index([arrivalLocationId])
 }
 
 model PackagingType {
@@ -69,6 +72,10 @@ model PackagingUnit {
 
   goods           GoodsItem[]
   createdAt       DateTime        @default(now())
+
+  @@index([transportUnitId])
+  @@index([transportUnitId, depth])
+  @@index([parentId])
 }
 
 model Product {
@@ -97,4 +104,7 @@ model GoodsItem {
   lastLocation    Location      @relation("GoodsLastLocation", fields: [lastLocationId], references: [id])
 
   createdAt       DateTime      @default(now())
+
+  @@index([packagingUnitId])
+  @@index([productId])
 }

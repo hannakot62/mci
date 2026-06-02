@@ -60,7 +60,14 @@ export interface PackagingTreeNode {
   depth: number;
   packagingType: { id: string; name: string };
   goods: GoodsNode[];
+  goodsCount: number;
+  goodsTruncated?: boolean;
   children: PackagingTreeNode[];
+}
+
+export interface TransportTreeMeta {
+  totalGoods: number;
+  goodsInline: boolean;
 }
 
 export interface TransportDetail {
@@ -71,6 +78,7 @@ export interface TransportDetail {
   departureLocation: Location;
   arrivalLocation: Location;
   packagingTree: PackagingTreeNode[];
+  treeMeta?: TransportTreeMeta;
 }
 
 export interface StatusUpdateResponse {

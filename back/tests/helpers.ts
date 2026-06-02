@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { getPrismaClient } from '../src/config/database';
+import { getPrismaClient } from '../src/infrastructure/db/prisma';
 
 const prisma = getPrismaClient();
 

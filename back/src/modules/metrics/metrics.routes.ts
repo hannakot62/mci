@@ -1,5 +1,5 @@
-import { FastifyInstance } from 'fastify';
-import { clearTimings, getTimings } from '../plugins/timer';
+import type { FastifyInstance } from 'fastify';
+import { clearTimings, getTimings } from './timer.store';
 
 export function registerMetricsRoutes(fastify: FastifyInstance): void {
   fastify.get('/api/metrics', async () => {
@@ -12,3 +12,4 @@ export function registerMetricsRoutes(fastify: FastifyInstance): void {
     return null;
   });
 }
+

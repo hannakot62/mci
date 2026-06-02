@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { getPrismaClient } from '../src/config/database';
+import { getPrismaClient } from '../src/infrastructure/db/prisma';
 import {
   findMci,
   markMci,
   updateStatusViaMci,
-} from '../src/services/mci.service';
+} from '../src/modules/mci/mci.service';
 import {
   createGoods,
   createPackaging,

@@ -1,12 +1,11 @@
-import { FastifyInstance } from 'fastify';
-import { getPrismaClient } from '../config/database';
-import { getTimings } from '../plugins/timer';
-import { getMciForTransport, updateStatusViaMci } from '../services/mci.service';
-import { getTransportWithTree, listTransports } from '../services/transport.service';
+import type { FastifyInstance } from 'fastify';
+import { getTimings } from '../metrics/timer.store';
+import { TRANSPORT_UNIT_STATUS } from '../../shared/constants/status';
+import { getMciForTransport, updateStatusViaMci } from '../mci/mci.service';
+import { getTransportWithTree, listTransports } from './transport.service';
+import { updateTransportUnitStatus } from './transport.repository';
 
-const prisma = getPrismaClient();
-
-interface TransportParams {
+export interface TransportParams {
   id: string;
 }
 
@@ -28,14 +27,16 @@ export function registerTransportRoutes(fastify: FastifyInstance): void {
   fastify.post<{ Params: TransportParams }>(
     '/api/transport/:id/dispatch',
     async (request, reply) => {
-      const mciId = await getMciForTransport(request.params.id);
+      const transportUnitId = request.params.id;
+      const mciId = await getMciForTransport(transportUnitId);
       if (!mciId) {
         reply.code(400);
         return { error: 'No MCI found for transport' };
       }
 
-      const result = await updateStatusViaMci(mciId, 'in_transit');
-      await prismaUpdateTransportStatus(request.params.id, 'in_transit');
+      const status = TRANSPORT_UNIT_STATUS.inTransit;
+      const result = await updateStatusViaMci(mciId, status);
+      await updateTransportUnitStatus(transportUnitId, status);
 
       return {
         mciId,
@@ -48,14 +49,16 @@ export function registerTransportRoutes(fastify: FastifyInstance): void {
   fastify.post<{ Params: TransportParams }>(
     '/api/transport/:id/deliver',
     async (request, reply) => {
-      const mciId = await getMciForTransport(request.params.id);
+      const transportUnitId = request.params.id;
+      const mciId = await getMciForTransport(transportUnitId);
       if (!mciId) {
         reply.code(400);
         return { error: 'No MCI found for transport' };
       }
 
-      const result = await updateStatusViaMci(mciId, 'delivered');
-      await prismaUpdateTransportStatus(request.params.id, 'delivered');
+      const status = TRANSPORT_UNIT_STATUS.delivered;
+      const result = await updateStatusViaMci(mciId, status);
+      await updateTransportUnitStatus(transportUnitId, status);
 
       return {
         mciId,
@@ -66,9 +69,3 @@ export function registerTransportRoutes(fastify: FastifyInstance): void {
   );
 }
 
-async function prismaUpdateTransportStatus(id: string, status: string): Promise<void> {
-  await prisma.transportUnit.update({
-    where: { id },
-    data: { status },
-  });
-}
