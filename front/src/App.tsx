@@ -1,20 +1,35 @@
-import React from 'react';
-import { PostForm } from './components/PostForm/PostForm';
-import { PostList } from './components/PostList/PostList';
-import { usePosts } from './hooks/usePosts';
-import './styles/globals.scss';
+import React, { useCallback, useState } from 'react';
+import { getTransport, type TransportDetail } from './api/client';
+import { ActionBar } from './components/ActionBar';
+import { CargoTree } from './components/CargoTree';
+import { SetupPanel } from './components/SetupPanel';
+import { TimingLog } from './components/TimingLog';
+import './styles/cargo.scss';
 
 function App(): React.ReactElement {
-  const { posts, loading, error, createPost, deletePost } = usePosts();
+  const [transport, setTransport] = useState<TransportDetail | null>(null);
+
+  const loadTransport = useCallback(async (id: string) => {
+    const data = await getTransport(id);
+    setTransport(data);
+  }, []);
+
+  const handleGenerated = useCallback(
+    (transportId: string) => {
+      void loadTransport(transportId);
+    },
+    [loadTransport]
+  );
 
   return (
-    <main className="container">
-      <h1>Posts</h1>
-
-      <PostForm onSubmit={createPost} loading={loading} />
-
-      <PostList posts={posts} loading={loading} error={error} onDelete={deletePost} />
-    </main>
+    <div className="app-shell">
+      <SetupPanel onGenerated={handleGenerated} />
+      <main className="main-area">
+        <ActionBar transport={transport} onUpdated={() => void loadTransport(transport!.id)} />
+        <CargoTree transport={transport} />
+      </main>
+      <TimingLog />
+    </div>
   );
 }
 

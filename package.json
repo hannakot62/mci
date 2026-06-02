@@ -1,0 +1,16 @@
+{
+  "name": "mci",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix back\" \"npm run dev --prefix front\"",
+    "test": "npm run test --prefix back",
+    "test:watch": "npm run test:watch --prefix back",
+    "db:migrate": "npm run db:migrate --prefix back",
+    "db:seed": "npm run db:seed --prefix back",
+    "db:reset": "npm run db:reset --prefix back"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
