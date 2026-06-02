@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { clearMetrics, getMetrics, type TimingEntry } from '../api/client';
+import { getMetrics, type TimingEntry } from '../api/client';
 
 function rowClass(durationMs: number): string {
   if (durationMs < 50) return 'timing-fast';
@@ -14,6 +14,7 @@ function formatTime(timestamp: string): string {
 export function TimingLog(): React.ReactElement {
   const [entries, setEntries] = useState<TimingEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [clearedAfter, setClearedAfter] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -31,14 +32,21 @@ export function TimingLog(): React.ReactElement {
     return () => clearInterval(interval);
   }, [refresh]);
 
+  const visibleEntries = entries.filter((e) => {
+    if (e.route === '/api/metrics') return false;
+    if (!clearedAfter) return true;
+    return e.timestamp > clearedAfter;
+  });
+
   const avg =
-    entries.length > 0
-      ? Math.round(entries.reduce((sum, e) => sum + e.durationMs, 0) / entries.length)
+    visibleEntries.length > 0
+      ? Math.round(visibleEntries.reduce((sum, e) => sum + e.durationMs, 0) / visibleEntries.length)
       : 0;
 
-  const handleClear = async (): Promise<void> => {
-    await clearMetrics();
-    await refresh();
+  const handleClear = (): void => {
+    setClearedAfter(new Date().toISOString());
+    setEntries([]);
+    setError(null);
   };
 
   return (
@@ -46,9 +54,9 @@ export function TimingLog(): React.ReactElement {
       <div className="timing-log-header">
         <strong>Timing Log</strong>
         <span>
-          {entries.length} ops · avg {avg} ms
+          {visibleEntries.length} ops · avg {avg} ms
         </span>
-        <button type="button" onClick={() => void handleClear()}>
+        <button type="button" onClick={handleClear}>
           Clear
         </button>
       </div>
@@ -64,7 +72,7 @@ export function TimingLog(): React.ReactElement {
             </tr>
           </thead>
           <tbody>
-            {[...entries].reverse().map((entry) => (
+            {[...visibleEntries].reverse().map((entry) => (
               <tr key={entry.id} className={rowClass(entry.durationMs)}>
                 <td>{formatTime(entry.timestamp)}</td>
                 <td>{entry.label ?? `${entry.method} ${entry.route}`}</td>

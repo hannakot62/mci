@@ -72,6 +72,31 @@ describe('Transport API integration', () => {
     expect(countMci(transport.packagingTree)).toBe(1);
   });
 
+  it('POST /api/transport/:id/dispatch with empty JSON body → 200', async () => {
+    const setup = await app.inject({
+      method: 'POST',
+      url: '/api/setup',
+      payload: {
+        transportCode: 'TRK-INT-003B',
+        transportType: 'van',
+        departureCode: 'HAM',
+        arrivalCode: 'RTM',
+        goodsCount: 4,
+        packingDepth: 2,
+      },
+    });
+
+    const { transportUnitId } = setup.json() as { transportUnitId: string };
+
+    const dispatch = await app.inject({
+      method: 'POST',
+      url: `/api/transport/${transportUnitId}/dispatch`,
+      headers: { 'content-type': 'application/json' },
+    });
+
+    expect(dispatch.statusCode).toBe(200);
+  });
+
   it('POST /api/transport/:id/dispatch → all goods status = in_transit', async () => {
     const setup = await app.inject({
       method: 'POST',

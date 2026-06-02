@@ -12,6 +12,23 @@ export const createApp = () => {
 
   const fastify = Fastify({ logger: loggerConfig });
 
+  fastify.removeContentTypeParser('application/json');
+  fastify.addContentTypeParser(
+    'application/json',
+    { parseAs: 'string' },
+    (_request, body, done) => {
+      if (body === '' || body === undefined) {
+        done(null, undefined);
+        return;
+      }
+      try {
+        done(null, JSON.parse(body.toString()) as unknown);
+      } catch (err) {
+        done(err as Error, undefined);
+      }
+    }
+  );
+
   fastify.get('/health', async () => {
     return { success: true, data: { status: 'ok' } };
   });
@@ -25,4 +42,3 @@ export const createApp = () => {
 
   return fastify;
 };
-

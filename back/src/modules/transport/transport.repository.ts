@@ -3,6 +3,7 @@ import {
   TRANSPORT_TREE_GOODS_PREVIEW_PER_NODE,
   TRANSPORT_TREE_INLINE_GOODS_MAX,
 } from '../../shared/constants/limits';
+import { NotFoundError } from '../../core/errors/AppError';
 
 const prisma = getPrismaClient();
 
@@ -111,10 +112,14 @@ export function shouldInlineGoodsInTree(totalGoods: number): boolean {
 }
 
 export async function updateTransportUnitStatus(id: string, status: string): Promise<void> {
-  await prisma.transportUnit.update({
+  const result = await prisma.transportUnit.updateMany({
     where: { id },
     data: { status },
   });
+
+  if (result.count === 0) {
+    throw new NotFoundError('Transport not found');
+  }
 }
 
 export async function listLocations() {
