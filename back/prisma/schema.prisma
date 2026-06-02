@@ -7,9 +7,94 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Post {
-  id    Int     @id @default(autoincrement())
-  title String
-  content String?
-  createdAt DateTime @default(now())
+model Location {
+  id                  String          @id @default(uuid())
+  code                String          @unique
+  name                String
+  type                String
+
+  departureTransports TransportUnit[] @relation("DepartureLocation")
+  arrivalTransports   TransportUnit[] @relation("ArrivalLocation")
+  packagingFirstLoc   PackagingUnit[] @relation("PackagingFirstLocation")
+  packagingLastLoc    PackagingUnit[] @relation("PackagingLastLocation")
+  goodsFirstLoc       GoodsItem[]     @relation("GoodsFirstLocation")
+  goodsLastLoc        GoodsItem[]     @relation("GoodsLastLocation")
+}
+
+model TransportUnit {
+  id                  String          @id @default(uuid())
+  code                String          @unique
+  type                String
+  status              String          @default("idle")
+
+  departureLocationId String
+  arrivalLocationId   String
+  departureLocation   Location        @relation("DepartureLocation", fields: [departureLocationId], references: [id])
+  arrivalLocation     Location        @relation("ArrivalLocation", fields: [arrivalLocationId], references: [id])
+
+  packagingUnits      PackagingUnit[]
+  createdAt           DateTime        @default(now())
+}
+
+model PackagingType {
+  id              String          @id @default(uuid())
+  name            String          @unique
+  maxWeightKg     Float?
+  maxVolumeLiters Float?
+
+  packagingUnits  PackagingUnit[]
+}
+
+model PackagingUnit {
+  id              String          @id @default(uuid())
+  status          String          @default("pending")
+  isMci           Boolean         @default(false)
+  path            String          @default("")
+  depth           Int             @default(0)
+
+  transportUnitId String?
+  transportUnit   TransportUnit?  @relation(fields: [transportUnitId], references: [id])
+
+  parentId        String?
+  parent          PackagingUnit?  @relation("PackagingNesting", fields: [parentId], references: [id])
+  children        PackagingUnit[] @relation("PackagingNesting")
+
+  packagingTypeId String
+  packagingType   PackagingType   @relation(fields: [packagingTypeId], references: [id])
+
+  firstLocationId String
+  lastLocationId  String
+  firstLocation   Location        @relation("PackagingFirstLocation", fields: [firstLocationId], references: [id])
+  lastLocation    Location        @relation("PackagingLastLocation", fields: [lastLocationId], references: [id])
+
+  goods           GoodsItem[]
+  createdAt       DateTime        @default(now())
+}
+
+model Product {
+  id                    String      @id @default(uuid())
+  name                  String
+  sku                   String      @unique
+  allowedPackagingTypes String      @default("box,crate")
+
+  goods                 GoodsItem[]
+}
+
+model GoodsItem {
+  id              String        @id @default(uuid())
+  serialNumber    String        @unique @default(uuid())
+  status          String        @default("pending")
+
+  packagingUnitId String
+  packagingUnit   PackagingUnit @relation(fields: [packagingUnitId], references: [id])
+
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id])
+
+  firstLocationId String
+  lastLocationId  String
+  firstLocation   Location      @relation("GoodsFirstLocation", fields: [firstLocationId], references: [id])
+  lastLocation    Location      @relation("GoodsLastLocation", fields: [lastLocationId], references: [id])
+
+  createdAt       DateTime      @default(now())
 }
