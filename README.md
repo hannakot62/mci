@@ -26,10 +26,6 @@ npm run dev
 ### API
 
 - `GET /health` - Проверка здоровья
-- `GET /posts` - Все посты
-- `POST /posts` - Создать пост
-- `PUT /posts/:id` - Обновить пост
-- `DELETE /posts/:id` - Удалить пост
 
 ## Frontend (React + Vite + TypeScript)
 
@@ -52,10 +48,6 @@ npm run dev
 
 ## Features
 
-✅ Полный CRUD для постов
-✅ Автоматическая синхронизация между бэком и фронтом
-✅ Красивый UI
-✅ Примеры тестов с Vitest
+✅ TypeScript end-to-end (Fastify + Prisma + React)
 ✅ SQLite база данных
 ✅ Type-safe с Prisma и TypeScript
-✅ Все на TypeScript

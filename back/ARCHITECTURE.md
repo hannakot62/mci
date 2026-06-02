@@ -20,17 +20,6 @@ src/
 │   └── requestLogger.ts            # Request logging middleware
 │
 ├── modules/                         # Feature modules (each module is self-contained)
-│   ├── posts/                       # Posts module example
-│   │   ├── dto/                     # Data Transfer Objects
-│   │   │   ├── CreatePostDto.ts     # Request schema for create
-│   │   │   └── UpdatePostDto.ts     # Request schema for update
-│   │   ├── services/
-│   │   │   └── PostService.ts       # Business logic & data access layer
-│   │   ├── validators/
-│   │   │   └── postValidators.ts    # Input validation functions
-│   │   ├── routes/
-│   │   │   └── postRoutes.ts        # Route definitions & controllers
-│   │   └── index.ts                 # Module exports
 │   └── (users, comments, etc...)    # Other modules follow same pattern
 │
 ├── app.ts                           # Fastify app factory
@@ -46,10 +35,10 @@ src/
 - Returns formatted responses
 
 ```typescript
-fastify.post('/posts', async (request, reply) => {
-  const data = validateCreatePost(request.body);  // Validation
-  const post = await postService.createPost(data); // Service call
-  return { success: true, data: post };             // Response
+fastify.post('/api/setup', async (request, reply) => {
+  // Validation
+  // Service call
+  return { success: true };
 });
 ```
 
@@ -59,7 +48,7 @@ fastify.post('/posts', async (request, reply) => {
 - Transforms raw data to DTOs
 
 ```typescript
-export const validateCreatePost = (data: unknown): CreatePostDto => {
+export const validatePayload = (data: unknown) => {
   // Type checking, business rules, sanitization
   throw new ValidationError('Invalid input');
 };
@@ -72,11 +61,7 @@ export const validateCreatePost = (data: unknown): CreatePostDto => {
 - No dependency on HTTP/Express
 
 ```typescript
-export class PostService {
-  async createPost(data: CreatePostDto): Promise<Post> {
-    return this.prisma.post.create({ data });
-  }
-}
+export class ExampleService {}
 ```
 
 ### 4. **DTO Layer** (`modules/*/dto/`)
@@ -85,9 +70,8 @@ export class PostService {
 - Input validation schemas
 
 ```typescript
-export interface CreatePostDto {
-  title: string;
-  content?: string | null;
+export interface ExampleDto {
+  value: string;
 }
 ```
 
@@ -211,7 +195,6 @@ export type { CreateUserDto } from './dto/CreateUserDto';
 import { registerUserRoutes } from './modules/users';
 
 registerUserRoutes(fastify);
-registerPostRoutes(fastify);
 ```
 
 ## 🛠️ Configuration
@@ -239,17 +222,7 @@ All errors inherit from `AppError`:
 
 ```typescript
 // In service
-if (!post) {
-  throw new NotFoundError(`Post ${id} not found`);
-}
-
-// Error automatically caught and formatted by middleware
-// Response:
-{
-  "success": false,
-  "error": "Post 123 not found",
-  "errorCode": "NOT_FOUND"
-}
+throw new NotFoundError('Entity not found');
 ```
 
 Available error classes:
@@ -265,30 +238,22 @@ Available error classes:
 Each layer can be tested independently:
 
 ```typescript
-// Test service (no HTTP)
-const service = new PostService();
-const post = await service.createPost({ title: 'Test' });
-
-// Test validator (pure function)
-const dto = validateCreatePost({ title: 'Test' });
-
 // Test routes (with Fastify test utilities)
 const response = await fastify.inject({
-  method: 'POST',
-  url: '/posts',
-  payload: { title: 'Test' }
+  method: 'GET',
+  url: '/health',
 });
 ```
 
 ## 📝 Naming Conventions
 
-- **Services**: `PostService.ts` (PascalCase, verb-less)
-- **Validators**: `postValidators.ts` (camelCase, plural)
-- **Routes**: `postRoutes.ts` (camelCase, plural)
-- **DTOs**: `CreatePostDto.ts`, `UpdatePostDto.ts` (PascalCase, verb-noun)
-- **Modules**: lowercase plural (`posts`, `users`, `comments`)
-- **Functions**: camelCase (`validateCreatePost`, `registerPostRoutes`)
-- **Interfaces**: PascalCase, verb-noun (`CreatePostDto`, `UpdatePostDto`)
+- **Services**: `UserService.ts` (PascalCase, verb-less)
+- **Validators**: `userValidators.ts` (camelCase, plural)
+- **Routes**: `userRoutes.ts` (camelCase, plural)
+- **DTOs**: `CreateUserDto.ts`, `UpdateUserDto.ts` (PascalCase, verb-noun)
+- **Modules**: lowercase plural (`users`, `comments`)
+- **Functions**: camelCase (`validatePayload`, `registerUserRoutes`)
+- **Interfaces**: PascalCase, verb-noun (`CreateUserDto`, `UpdateUserDto`)
 
 ## 🔐 Security
 

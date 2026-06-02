@@ -1,1 +1,1 @@
-export { usePosts } from './usePosts';
+export {};

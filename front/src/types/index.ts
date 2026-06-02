@@ -1,1 +1,1 @@
-export type { Post, CreatePostPayload } from './post';
+export {};

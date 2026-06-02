@@ -12,13 +12,13 @@
 │                      FASTIFY SERVER (app.ts)                        │
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │              Route Handlers (modules/*/routes/)              │  │
-│  │  GET /posts, POST /posts, PUT /posts/:id, DELETE /posts/:id  │  │
+│  │  Example endpoints: GET /health, POST /api/setup             │  │
 │  └────────────────────┬─────────────────────────────────────────┘  │
 │                       │                                              │
 │                       ▼                                              │
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │          Validators (modules/*/validators/)                 │  │
-│  │  validateCreatePost(), validateUpdatePost()                 │  │
+│  │  (module-specific validators)                               │  │
 │  └────────────────────┬─────────────────────────────────────────┘  │
 │                       │                                              │
 │       ┌───────────────┴───────────────┐                            │
@@ -31,7 +31,7 @@
 │                         ▼                                          │
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │         Services (modules/*/services/)                       │  │
-│  │  PostService.createPost(), getPostById(), updatePost(), etc. │  │
+│  │  (module-specific service methods)                           │  │
 │  └────────────────────┬─────────────────────────────────────────┘  │
 │                       │                                              │
 │       ┌───────────────┴──────────────────┐                         │
@@ -46,7 +46,7 @@
 │                       ▼                                            │
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │          Prisma Client (config/database.ts)                 │  │
-│  │  prisma.post.create(), findMany(), update(), delete()       │  │
+│  │  prisma.* queries                                            │  │
 │  └────────────────────┬─────────────────────────────────────────┘  │
 └───────────────────────┼────────────────────────────────────────────┘
                         │ SQL
@@ -55,11 +55,7 @@
           │   SQLite Database            │
           │  (prisma/dev.db)             │
           │  ┌────────────────────────┐  │
-          │  │ POST table             │  │
-          │  │ - id                   │  │
-          │  │ - title                │  │
-          │  │ - content              │  │
-          │  │ - createdAt            │  │
+          │  │ application tables     │  │
           │  └────────────────────────┘  │
           └──────────────────────────────┘
 ```
@@ -114,24 +110,24 @@
 
 ```
 1. Client sends HTTP Request
-   └─> POST /posts
-       Body: { "title": "My Post", "content": "Content" }
+   └─> POST /api/setup
+       Body: { ... }
 
 2. Fastify Route Handler receives request
-   └─> fastify.post('/posts', async (request) => {...})
+   └─> fastify.post('/api/setup', async (request) => {...})
 
 3. Validator processes input
-   └─> validateCreatePost(request.body)
-   └─> Returns: CreatePostDto or throws ValidationError
+   └─> (module validator)
+   └─> Returns: DTO or throws ValidationError
 
 4. Service executes business logic
-   └─> postService.createPost(data)
+   └─> service call
    └─> Queries database via Prisma
-   └─> Returns: Post object or throws AppError
+   └─> Returns: result or throws AppError
 
 5. Route Handler formats response
-   └─> Returns: { success: true, data: post }
-   └─> HTTP Status: 201 Created
+   └─> Returns: { success: true, data: ... }
+   └─> HTTP Status: 200/201 (as appropriate)
 
 6. If any error occurs:
    └─> Error Handler middleware catches it
@@ -145,26 +141,12 @@
 ## Module Structure
 
 ```
-modules/posts/
+modules/<feature>/
 ├── dto/
-│   ├── CreatePostDto.ts      Interface for POST /posts request
-│   └── UpdatePostDto.ts      Interface for PUT /posts/:id request
-│
 ├── validators/
-│   └── postValidators.ts     Functions to validate & transform input
-│                             validateCreatePost(), validateUpdatePost()
-│
 ├── services/
-│   └── PostService.ts        Business logic
-│                             getAllPosts(), getPostById(),
-│                             createPost(), updatePost(), deletePost()
-│
 ├── routes/
-│   └── postRoutes.ts         HTTP endpoint definitions
-│                             Calls validators → services → returns response
-│
-└── index.ts                  Module exports
-                              export { registerPostRoutes, PostService }
+└── index.ts
 ```
 
 ## Data Transformation Pipeline
@@ -187,7 +169,7 @@ Raw HTTP Request Body
           ▼
    ┌──────────────────────┐
    │ Prisma Result        │
-   │ (Post object)        │
+   │ (domain object)      │
    └──────┬───────────────┘
           │
           ▼ (Route Handler)
@@ -195,7 +177,7 @@ Raw HTTP Request Body
    │ JSON Response            │
    │ {                        │
    │   "success": true,       │
-   │   "data": { Post }       │
+  │   "data": { ... }        │
    │ }                        │
    └──────────────────────────┘
           │
@@ -239,15 +221,10 @@ Server Entry Point
 ```
 Current Structure:
 ├── modules/
-│   └── posts/          (Posts module)
-│       ├── dto/
-│       ├── services/
-│       ├── validators/
-│       └── routes/
+│   └── <feature>/      (Feature module)
 
 Add new modules following same pattern:
 ├── modules/
-│   ├── posts/          (Posts module)
 │   ├── users/          (Users module) ← NEW
 │   │   ├── dto/
 │   │   ├── services/
@@ -282,16 +259,15 @@ Integration Tests:
   └─ Error scenarios
 
 Example:
-  test('validateCreatePost should throw on empty title', () => {
+  test('validator should throw on invalid input', () => {
     expect(() => {
-      validateCreatePost({ title: '' });
+      validatePayload({ value: '' });
     }).toThrow(ValidationError);
   });
 
-  test('PostService.createPost should create post', async () => {
-    const service = new PostService();
-    const post = await service.createPost({ title: 'Test' });
-    expect(post.title).toBe('Test');
+  test('service should execute business logic', async () => {
+    const service = new ExampleService();
+    await service.doWork();
   });
 ```
 

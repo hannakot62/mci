@@ -18,6 +18,6 @@
     "strictNullChecks": true,
     "strictFunctionTypes": true
   },
-  "include": ["src/**/*",],
-  "exclude": ["node_modules", "dist", "src/modules/posts"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
