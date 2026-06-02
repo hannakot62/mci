@@ -1,12 +1,7 @@
 /** In-memory ring buffer for timing metrics */
 export const TIMINGS_MAX_ENTRIES = 100;
 
-/** POST /api/setup — packaging depth */
-export const SETUP_DEFAULT_PACKING_DEPTH = 2;
-export const SETUP_MIN_PACKING_DEPTH = 1;
-export const SETUP_MAX_PACKING_DEPTH = 20;
-
-/** POST /api/setup — goods volume */
+/** POST /api/setup — goods volume per product group */
 export const SETUP_MIN_GOODS_COUNT = 1;
 export const SETUP_MAX_GOODS_COUNT = 50_000;
 

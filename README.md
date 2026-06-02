@@ -1,18 +1,18 @@
 # mci
 
-Полный стек приложения с Fastify + Prisma + SQLite на backend и React + Vite + Vitest на frontend. Написано на **TypeScript**.
+Full-stack application with Fastify + Prisma + SQLite on the backend and React + Vite + Vitest on the frontend. Written in **TypeScript**.
 
-## Структура
+## Structure
 
 ```
 mci/
-├── back/          - Fastify API с Prisma (TypeScript)
-└── front/         - React приложение с Vite (TypeScript)
+├── back/          - Fastify API with Prisma (TypeScript)
+└── front/         - React app with Vite (TypeScript)
 ```
 
 ## Backend (Fastify + Prisma + TypeScript)
 
-### Установка
+### Setup
 
 ```bash
 cd back
@@ -21,15 +21,15 @@ npx prisma migrate dev --name init
 npm run dev
 ```
 
-Сервер запустится на `http://localhost:3000`
+The server will start at `http://localhost:3000`
 
 ### API
 
-- `GET /health` - Проверка здоровья
+- `GET /health` - Health check
 
 ## Frontend (React + Vite + TypeScript)
 
-### Установка
+### Setup
 
 ```bash
 cd front
@@ -37,17 +37,17 @@ npm install
 npm run dev
 ```
 
-Приложение будет доступно на `http://localhost:5173`
+The app will be available at `http://localhost:5173`
 
-### Команды
+### Commands
 
-- `npm run dev` - Запуск dev-сервера
-- `npm run build` - Сборка приложения
-- `npm run preview` - Просмотр собранного приложения
-- `npm test` - Запуск тестов с Vitest
+- `npm run dev` - Start dev server
+- `npm run build` - Build the app
+- `npm run preview` - Preview the production build
+- `npm test` - Run tests with Vitest
 
 ## Features
 
 ✅ TypeScript end-to-end (Fastify + Prisma + React)
-✅ SQLite база данных
-✅ Type-safe с Prisma и TypeScript
+✅ SQLite database
+✅ Type-safe with Prisma and TypeScript

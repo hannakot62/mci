@@ -37,8 +37,6 @@ export function registerTransportRoutes(fastify: FastifyInstance): void {
       const result = await updateAllMcisStatus(transportUnitId, status);
 
       return {
-        mciIds: result.mciIds,
-        mciId: result.mciIds[0] ?? null,
         ...result,
         timings: getTimings(),
       };
@@ -59,8 +57,6 @@ export function registerTransportRoutes(fastify: FastifyInstance): void {
       const result = await updateAllMcisStatus(transportUnitId, status);
 
       return {
-        mciIds: result.mciIds,
-        mciId: result.mciIds[0] ?? null,
         ...result,
         timings: getTimings(),
       };

@@ -43,7 +43,6 @@ export interface SetupPayload {
 export interface SetupResponse {
   transportUnitId: string;
   mciIds: string[];
-  mciId: string | null;
   summary: {
     transportCode: string;
     packagingCount: number;
@@ -106,7 +105,6 @@ export interface TransportDetail {
 
 export interface StatusUpdateResponse {
   mciIds: string[];
-  mciId: string | null;
   updatedPackaging: number;
   updatedGoods: number;
   timings: TimingEntry[];

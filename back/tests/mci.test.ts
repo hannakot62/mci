@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { getPrismaClient } from '../src/infrastructure/db/prisma';
-import {
-  findMci,
-  findMcis,
-  markMci,
-  updateStatusViaMci,
-} from '../src/modules/mci/mci.service';
+import { findMcis, markMci, updateStatusViaMci } from '../src/modules/mci/mci.service';
 import {
   createGoods,
   createPackaging,
@@ -45,8 +40,8 @@ describe('MCI algorithm', () => {
       lastLocationId: seed.arrivalId,
     });
 
-    const mciId = await findMci(transportId);
-    expect(mciId).toBe(root.id);
+    const mciIds = await findMcis(transportId);
+    expect(mciIds).toEqual([root.id]);
   });
 
   it('nested happy path — 3 levels deep, all same location → MCI = top-level packaging', async () => {
@@ -88,8 +83,8 @@ describe('MCI algorithm', () => {
       lastLocationId: seed.arrivalId,
     });
 
-    const mciId = await findMci(transportId);
-    expect(mciId).toBe(root.id);
+    const mciIds = await findMcis(transportId);
+    expect(mciIds).toEqual([root.id]);
   });
 
   it('mixed locations in same box — packaging not MCI, each goods item is MCI', async () => {
@@ -132,8 +127,8 @@ describe('MCI algorithm', () => {
       lastLocationId: seed.arrivalId,
     });
 
-    const mciId = await findMci(transportId);
-    expect(mciId).toBeNull();
+    const mciIds = await findMcis(transportId);
+    expect(mciIds).toEqual([]);
   });
 
   it('multiple candidates — two sibling subtrees, each qualifies → both marked as MCI', async () => {
@@ -307,8 +302,8 @@ describe('MCI algorithm', () => {
       lastLocationId: seed.arrivalId,
     });
 
-    const mciId = await findMci(transportId);
-    expect(mciId).toBe(box.id);
+    const mciIds = await findMcis(transportId);
+    expect(mciIds).toEqual([box.id]);
   });
 
   it('after dispatch — status update propagates to all descendants', async () => {

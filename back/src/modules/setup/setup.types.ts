@@ -18,8 +18,5 @@ export type ProductGroupConfig = {
 export interface SetupBody {
   transportCode: string;
   transportType: TransportType;
-  productGroups?: ProductGroupConfig[];
-  /** Legacy single-group setup */
-  goodsCount?: number;
-  packingDepth?: number;
+  productGroups: ProductGroupConfig[];
 }

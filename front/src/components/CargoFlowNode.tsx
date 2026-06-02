@@ -74,7 +74,7 @@ function CargoFlowNodeComponent({ data }: NodeProps): React.ReactElement {
         )}
         {d.isMci && (
           <span className="cargo-node__mci-tag">
-            {d.kind === 'goods' ? 'MCI·товар' : 'MCI'}
+            {d.kind === 'goods' ? 'MCI·goods' : 'MCI'}
           </span>
         )}
         {d.status && d.statusColor && (

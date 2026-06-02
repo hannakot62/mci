@@ -16,7 +16,7 @@ export function MciLegend({ entries }: MciLegendProps): React.ReactElement | nul
 
   return (
     <div className="mci-legend" aria-label="MCI legend">
-      <span className="mci-legend__title">MCI по товарам</span>
+      <span className="mci-legend__title">MCI by product</span>
       <ul className="mci-legend__list">
         {entries.map(({ sku, palette, status }) => (
           <li key={sku} className="mci-legend__item">

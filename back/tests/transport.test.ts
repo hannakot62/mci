@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
 import { disconnectDatabase } from '../src/infrastructure/db/prisma';
 import { clearTimings } from '../src/modules/metrics/timer.store';
+import type { ProductGroupConfig } from '../src/modules/setup/setup.types';
 import { resetCargoData } from './helpers';
 
 describe('Transport API integration', () => {
@@ -17,33 +18,59 @@ describe('Transport API integration', () => {
     await disconnectDatabase();
   });
 
-  it('POST /api/setup with goodsCount=10 → returns 200, mciId is not null', async () => {
+  async function firstProductSku(): Promise<string> {
+    const products = await app.inject({ method: 'GET', url: '/api/products' });
+    const catalog = products.json() as Array<{ sku: string }>;
+    expect(catalog.length).toBeGreaterThan(0);
+    return catalog[0].sku;
+  }
+
+  function singleGroup(sku: string, goodsCount: number, nestingLevels: ProductGroupConfig['nestingLevels'] = [{ childCount: 1 }]) {
+    return {
+      transportCode: `TRK-${Date.now()}`,
+      transportType: 'truck' as const,
+      productGroups: [
+        {
+          productSku: sku,
+          goodsCount,
+          rootPackagingCount: 1,
+          nestingLevels,
+        },
+      ],
+    };
+  }
+
+  it('POST /api/setup with productGroups → returns 200 and mciIds', async () => {
+    const sku = await firstProductSku();
     const response = await app.inject({
       method: 'POST',
       url: '/api/setup',
-      payload: {
-        transportCode: 'TRK-INT-001',
-        transportType: 'truck',
-        goodsCount: 10,
-        packingDepth: 2,
-      },
+      payload: singleGroup(sku, 10),
     });
 
     expect(response.statusCode).toBe(200);
-    const body = response.json() as { mciId: string | null; transportUnitId: string };
+    const body = response.json() as { mciIds: string[]; transportUnitId: string };
     expect(body.transportUnitId).toBeTruthy();
-    expect(body.mciId).toBeTruthy();
+    expect(body.mciIds.length).toBeGreaterThan(0);
   });
 
   it('GET /api/transport/:id → tree contains at least one isMci node', async () => {
+    const sku = await firstProductSku();
     const setup = await app.inject({
       method: 'POST',
       url: '/api/setup',
       payload: {
+        ...singleGroup(sku, 5),
         transportCode: 'TRK-INT-002',
         transportType: 'container',
-        goodsCount: 5,
-        packingDepth: 3,
+        productGroups: [
+          {
+            productSku: sku,
+            goodsCount: 5,
+            rootPackagingCount: 1,
+            nestingLevels: [{ childCount: 1 }, { childCount: 1 }],
+          },
+        ],
       },
     });
 
@@ -121,14 +148,14 @@ describe('Transport API integration', () => {
   });
 
   it('POST /api/transport/:id/dispatch with empty JSON body → 200', async () => {
+    const sku = await firstProductSku();
     const setup = await app.inject({
       method: 'POST',
       url: '/api/setup',
       payload: {
+        ...singleGroup(sku, 4),
         transportCode: 'TRK-INT-003B',
         transportType: 'van',
-        goodsCount: 4,
-        packingDepth: 2,
       },
     });
 
@@ -144,14 +171,14 @@ describe('Transport API integration', () => {
   });
 
   it('POST /api/transport/:id/dispatch → goods under MCI become in_transit', async () => {
+    const sku = await firstProductSku();
     const setup = await app.inject({
       method: 'POST',
       url: '/api/setup',
       payload: {
+        ...singleGroup(sku, 8),
         transportCode: 'TRK-INT-003',
         transportType: 'van',
-        goodsCount: 8,
-        packingDepth: 2,
       },
     });
 
@@ -191,10 +218,10 @@ describe('Transport API integration', () => {
       ...node.children.flatMap(collectSubtreeStatuses),
     ];
 
-    const findMcis = (nodes: TreeNode[]): TreeNode[] =>
-      nodes.flatMap((n) => [...(n.isMci ? [n] : []), ...findMcis(n.children)]);
+    const collectMciNodes = (nodes: TreeNode[]): TreeNode[] =>
+      nodes.flatMap((n) => [...(n.isMci ? [n] : []), ...collectMciNodes(n.children)]);
 
-    const statuses = findMcis(transport.packagingTree as TreeNode[]).flatMap(
+    const statuses = collectMciNodes(transport.packagingTree as TreeNode[]).flatMap(
       collectSubtreeStatuses
     );
     expect(statuses.length).toBeGreaterThan(0);
@@ -204,14 +231,13 @@ describe('Transport API integration', () => {
   it('timing entries appear in GET /api/metrics after each operation', async () => {
     clearTimings();
 
+    const sku = await firstProductSku();
     await app.inject({
       method: 'POST',
       url: '/api/setup',
       payload: {
+        ...singleGroup(sku, 3),
         transportCode: 'TRK-INT-004',
-        transportType: 'truck',
-        goodsCount: 3,
-        packingDepth: 2,
       },
     });
 
@@ -223,5 +249,18 @@ describe('Transport API integration', () => {
     expect(metrics.statusCode).toBe(200);
     const entries = metrics.json() as Array<{ durationMs: number }>;
     expect(entries.length).toBeGreaterThan(0);
+  });
+
+  it('POST /api/setup without productGroups → 400', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/setup',
+      payload: {
+        transportCode: 'TRK-NO-GROUPS',
+        transportType: 'truck',
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
   });
 });

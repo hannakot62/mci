@@ -90,7 +90,7 @@ function MciChip({ mci }: { mci: MciChipData }): React.ReactElement {
     >
       <div className="mci-chip__row mci-chip__row--meta">
         <span className="mci-chip__tag">MCI</span>
-        <span className="mci-chip__kind">{mci.kind === 'goods' ? 'товар' : 'упаковка'}</span>
+        <span className="mci-chip__kind">{mci.kind === 'goods' ? 'goods' : 'packaging'}</span>
       </div>
       <div className="mci-chip__row mci-chip__title">{mci.title.toUpperCase()}</div>
       <div className="mci-chip__row mci-chip__route">{mci.route}</div>
@@ -138,7 +138,7 @@ export function ActionBar({ transport, onUpdated }: ActionBarProps): React.React
       <div className="action-bar__slider-wrap">
         <span className="action-bar__slider-label">MCI</span>
         {mcis.length === 0 ? (
-          <p className="action-bar__empty">MCI не найден — проверьте маршруты в поддеревьях</p>
+          <p className="action-bar__empty">No MCI found — check routes in subtrees</p>
         ) : (
           <Swiper
             className="action-bar__swiper"

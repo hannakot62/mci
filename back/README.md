@@ -1,8 +1,8 @@
 # mci Back-end
 
-Fastify API с Prisma + SQLite
+Fastify API with Prisma + SQLite
 
-## Запуск
+## Getting Started
 
 ```bash
 npm install

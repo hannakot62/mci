@@ -1,7 +1,6 @@
 import { recordTiming } from '../metrics/timer.service';
 import {
   findGoodsMciCandidates,
-  findMciCandidate,
   findPackagingMciCandidates,
   getMcisForTransport,
   getMciEntity,
@@ -12,10 +11,6 @@ import {
   updatePackagingSubtreeStatus,
   updateSingleGoodsStatus,
 } from './mci.repository';
-
-export async function findMci(transportUnitId: string): Promise<string | null> {
-  return findMciCandidate(transportUnitId);
-}
 
 export async function findMcis(transportUnitId: string): Promise<string[]> {
   const packaging = await findPackagingMciCandidates(transportUnitId);

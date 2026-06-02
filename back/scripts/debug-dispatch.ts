@@ -6,14 +6,26 @@ import { TRANSPORT_UNIT_STATUS } from '../src/shared/constants/status';
 const app = createApp();
 
 async function main(): Promise<void> {
+  const products = await app.inject({ method: 'GET', url: '/api/products' });
+  const catalog = products.json() as Array<{ sku: string }>;
+  if (catalog.length === 0) {
+    throw new Error('No products in catalog');
+  }
+
   const setup = await app.inject({
     method: 'POST',
     url: '/api/setup',
     payload: {
       transportCode: `TRK-DBG-${Date.now()}`,
       transportType: 'truck',
-      goodsCount: 25,
-      packingDepth: 2,
+      productGroups: [
+        {
+          productSku: catalog[0].sku,
+          goodsCount: 25,
+          rootPackagingCount: 1,
+          nestingLevels: [{ childCount: 1 }],
+        },
+      ],
     },
   });
 

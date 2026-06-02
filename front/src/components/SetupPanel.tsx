@@ -120,8 +120,8 @@ export function SetupPanel({ onGenerated }: SetupPanelProps): React.ReactElement
     <aside className="setup-panel">
       <h2>Cargo Setup</h2>
       <p className="setup-hint">
-        Маршруты задаются на упаковках и товарах (случайно при генерации). MCI — отдельно на каждый
-        товар.
+        Routes are assigned to packaging and goods (randomly on generation). MCI is calculated
+        separately for each product.
       </p>
       <form onSubmit={handleSubmit}>
         <label>
@@ -147,10 +147,10 @@ export function SetupPanel({ onGenerated }: SetupPanelProps): React.ReactElement
 
         {groups.map((group, gi) => (
           <fieldset key={`${group.productSku}-${gi}`} className="product-group-fieldset">
-            <legend>Товар {gi + 1}</legend>
+            <legend>Product {gi + 1}</legend>
             {groups.length > 1 && (
               <button type="button" className="link-btn" onClick={() => removeProductGroup(gi)}>
-                Удалить группу
+                Remove group
               </button>
             )}
 
@@ -214,7 +214,7 @@ export function SetupPanel({ onGenerated }: SetupPanelProps): React.ReactElement
                 </div>
               ))}
               <button type="button" onClick={() => addNestingLevel(gi)}>
-                + уровень вложенности
+                + nesting level
               </button>
             </div>
           </fieldset>
@@ -222,7 +222,7 @@ export function SetupPanel({ onGenerated }: SetupPanelProps): React.ReactElement
 
         {groups.length < products.length && (
           <button type="button" onClick={addProductGroup}>
-            + товар в грузовик
+            + product to truck
           </button>
         )}
 

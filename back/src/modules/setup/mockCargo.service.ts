@@ -258,22 +258,3 @@ export async function generateMockCargo(options: {
     },
   };
 }
-
-/** Converts legacy setup fields into product groups. */
-export function legacyToProductGroups(
-  products: Product[],
-  goodsCount: number,
-  packingDepth: number
-): ProductGroupConfig[] {
-  const nestingLevels =
-    packingDepth <= 1
-      ? []
-      : Array.from({ length: packingDepth - 1 }, () => ({ childCount: 1 }));
-
-  return products.slice(0, 1).map((p) => ({
-    productSku: p.sku,
-    goodsCount,
-    rootPackagingCount: 1,
-    nestingLevels,
-  }));
-}

@@ -120,16 +120,6 @@ export async function findGoodsMciCandidates(
   `);
 }
 
-/** @deprecated — first packaging MCI id */
-export async function findMciCandidate(transportUnitId: string): Promise<string | null> {
-  const rows = await findPackagingMciCandidates(transportUnitId);
-  if (rows.length === 0) {
-    const goods = await findGoodsMciCandidates(transportUnitId);
-    return goods[0]?.id ?? null;
-  }
-  return rows[0].id;
-}
-
 export async function unmarkAllMci(transportUnitId: string): Promise<void> {
   await prisma.$transaction([
     prisma.packagingUnit.updateMany({
