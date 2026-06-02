@@ -8,6 +8,8 @@ type FlatPackagingUnit = {
   depth: number;
   parentId: string | null;
   packagingType: { id: string; name: string };
+  firstLocation: PackagingTreeNode['firstLocation'];
+  lastLocation: PackagingTreeNode['lastLocation'];
   goods: PackagingTreeNode['goods'];
   goodsCount: number;
   goodsTruncated: boolean;
@@ -30,6 +32,8 @@ export function buildPackagingTree(units: FlatPackagingUnit[]): PackagingTreeNod
       path: node.path,
       depth: node.depth,
       packagingType: node.packagingType,
+      firstLocation: node.firstLocation,
+      lastLocation: node.lastLocation,
       goods: node.goods,
       goodsCount: node.goodsCount,
       goodsTruncated: node.goodsTruncated,

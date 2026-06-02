@@ -1,9 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { getTimings } from '../metrics/timer.store';
 import { TRANSPORT_UNIT_STATUS } from '../../shared/constants/status';
-import { getMciForTransport, updateStatusViaMci } from '../mci/mci.service';
+import { getMcisForTransport, updateAllMcisStatus } from '../mci/mci.service';
 import { getTransportWithTree, listTransports } from './transport.service';
-import { updateTransportUnitStatus } from './transport.repository';
 
 export interface TransportParams {
   id: string;
@@ -28,18 +27,18 @@ export function registerTransportRoutes(fastify: FastifyInstance): void {
     '/api/transport/:id/dispatch',
     async (request, reply) => {
       const transportUnitId = request.params.id;
-      const mciId = await getMciForTransport(transportUnitId);
-      if (!mciId) {
+      const mcis = await getMcisForTransport(transportUnitId);
+      if (mcis.length === 0) {
         reply.code(400);
         return { error: 'No MCI found for transport' };
       }
 
       const status = TRANSPORT_UNIT_STATUS.inTransit;
-      const result = await updateStatusViaMci(mciId, status);
-      await updateTransportUnitStatus(transportUnitId, status);
+      const result = await updateAllMcisStatus(transportUnitId, status);
 
       return {
-        mciId,
+        mciIds: result.mciIds,
+        mciId: result.mciIds[0] ?? null,
         ...result,
         timings: getTimings(),
       };
@@ -50,22 +49,21 @@ export function registerTransportRoutes(fastify: FastifyInstance): void {
     '/api/transport/:id/deliver',
     async (request, reply) => {
       const transportUnitId = request.params.id;
-      const mciId = await getMciForTransport(transportUnitId);
-      if (!mciId) {
+      const mcis = await getMcisForTransport(transportUnitId);
+      if (mcis.length === 0) {
         reply.code(400);
         return { error: 'No MCI found for transport' };
       }
 
       const status = TRANSPORT_UNIT_STATUS.delivered;
-      const result = await updateStatusViaMci(mciId, status);
-      await updateTransportUnitStatus(transportUnitId, status);
+      const result = await updateAllMcisStatus(transportUnitId, status);
 
       return {
-        mciId,
+        mciIds: result.mciIds,
+        mciId: result.mciIds[0] ?? null,
         ...result,
         timings: getTimings(),
       };
     }
   );
 }
-

@@ -3,63 +3,233 @@ import { getPrismaClient } from '../../infrastructure/db/prisma';
 
 const prisma = getPrismaClient();
 
-interface MciRow {
+export type MciEntityType = 'packaging' | 'goods';
+
+export interface MciPackagingRow {
   id: string;
 }
 
-/**
- * Picks MCI using path-prefix subtree joins (no recursive CTE, no `%id%` path scans).
- */
-export async function findMciCandidate(transportUnitId: string): Promise<string | null> {
-  const rows = await prisma.$queryRaw<MciRow[]>(Prisma.sql`
-    SELECT pu.id
-    FROM "PackagingUnit" pu
-    LEFT JOIN "PackagingUnit" subtree
-      ON subtree."transportUnitId" = pu."transportUnitId"
-      AND (subtree.id = pu.id OR subtree.path LIKE pu.path || '%')
-    LEFT JOIN "GoodsItem" gi ON gi."packagingUnitId" = subtree.id
-    WHERE pu."transportUnitId" = ${transportUnitId}
-    GROUP BY pu.id, pu.depth
-    HAVING COUNT(gi.id) >= 1
-      AND COUNT(DISTINCT gi."firstLocationId") = 1
-      AND COUNT(DISTINCT gi."lastLocationId") = 1
-    ORDER BY COUNT(gi.id) DESC, pu.depth ASC
-    LIMIT 1
-  `);
+export interface MciGoodsRow {
+  id: string;
+  productId: string;
+}
 
-  if (rows.length === 0) return null;
+/**
+ * All maximal packaging MCIs: subtree is route-consistent, and no ancestor is also a candidate.
+ */
+export async function findPackagingMciCandidates(
+  transportUnitId: string
+): Promise<MciPackagingRow[]> {
+  return prisma.$queryRaw<MciPackagingRow[]>(Prisma.sql`
+    WITH candidates AS (
+      SELECT
+        pu.id,
+        pu.path
+      FROM "PackagingUnit" pu
+      LEFT JOIN "PackagingUnit" subtree
+        ON subtree."transportUnitId" = pu."transportUnitId"
+        AND (subtree.id = pu.id OR subtree.path LIKE pu.path || '%')
+      LEFT JOIN "GoodsItem" gi ON gi."packagingUnitId" = subtree.id
+      WHERE pu."transportUnitId" = ${transportUnitId}
+      GROUP BY pu.id, pu.path
+      HAVING COUNT(gi.id) >= 1
+        AND COUNT(DISTINCT gi."productId") = 1
+        AND COUNT(DISTINCT gi."firstLocationId") = 1
+        AND COUNT(DISTINCT gi."lastLocationId") = 1
+        AND COUNT(DISTINCT subtree."firstLocationId") = 1
+        AND COUNT(DISTINCT subtree."lastLocationId") = 1
+    )
+    SELECT c1.id
+    FROM candidates c1
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM candidates c2
+      JOIN "PackagingUnit" pu1 ON pu1.id = c1.id
+      JOIN "PackagingUnit" pu2 ON pu2.id = c2.id
+      WHERE c2.id != c1.id
+        AND pu1.path LIKE pu2.path || '%'
+        AND LENGTH(pu1.path) > LENGTH(pu2.path)
+    )
+  `);
+}
+
+/**
+ * Goods-level MCI when leaf packaging cannot be MCI (e.g. conflicting siblings in the same box).
+ */
+export async function findGoodsMciCandidates(
+  transportUnitId: string
+): Promise<MciGoodsRow[]> {
+  return prisma.$queryRaw<MciGoodsRow[]>(Prisma.sql`
+    WITH candidates AS (
+      SELECT
+        pu.id,
+        pu.path
+      FROM "PackagingUnit" pu
+      LEFT JOIN "PackagingUnit" subtree
+        ON subtree."transportUnitId" = pu."transportUnitId"
+        AND (subtree.id = pu.id OR subtree.path LIKE pu.path || '%')
+      LEFT JOIN "GoodsItem" gi ON gi."packagingUnitId" = subtree.id
+      WHERE pu."transportUnitId" = ${transportUnitId}
+      GROUP BY pu.id, pu.path
+      HAVING COUNT(gi.id) >= 1
+        AND COUNT(DISTINCT gi."productId") = 1
+        AND COUNT(DISTINCT gi."firstLocationId") = 1
+        AND COUNT(DISTINCT gi."lastLocationId") = 1
+        AND COUNT(DISTINCT subtree."firstLocationId") = 1
+        AND COUNT(DISTINCT subtree."lastLocationId") = 1
+    ),
+    maximal_packaging AS (
+      SELECT c1.id
+      FROM candidates c1
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM candidates c2
+        JOIN "PackagingUnit" pu1 ON pu1.id = c1.id
+        JOIN "PackagingUnit" pu2 ON pu2.id = c2.id
+        WHERE c2.id != c1.id
+          AND pu1.path LIKE pu2.path || '%'
+          AND LENGTH(pu1.path) > LENGTH(pu2.path)
+      )
+    )
+    SELECT gi.id, gi."productId"
+    FROM "GoodsItem" gi
+    JOIN "PackagingUnit" pu ON gi."packagingUnitId" = pu.id
+    WHERE pu."transportUnitId" = ${transportUnitId}
+      AND NOT EXISTS (
+        SELECT 1 FROM "PackagingUnit" child WHERE child."parentId" = pu.id
+      )
+      AND pu.id NOT IN (SELECT id FROM maximal_packaging)
+      AND NOT EXISTS (
+        SELECT 1
+        FROM maximal_packaging mp
+        JOIN "PackagingUnit" anc ON anc.id = mp.id
+        WHERE anc."transportUnitId" = pu."transportUnitId"
+          AND pu.path LIKE anc.path || '%'
+          AND anc.id != pu.id
+      )
+      AND EXISTS (
+        SELECT 1
+        FROM "GoodsItem" other
+        WHERE other."packagingUnitId" = pu.id
+          AND other.id != gi.id
+          AND (
+            other."firstLocationId" != gi."firstLocationId"
+            OR other."lastLocationId" != gi."lastLocationId"
+          )
+      )
+  `);
+}
+
+/** @deprecated — first packaging MCI id */
+export async function findMciCandidate(transportUnitId: string): Promise<string | null> {
+  const rows = await findPackagingMciCandidates(transportUnitId);
+  if (rows.length === 0) {
+    const goods = await findGoodsMciCandidates(transportUnitId);
+    return goods[0]?.id ?? null;
+  }
   return rows[0].id;
 }
 
 export async function unmarkAllMci(transportUnitId: string): Promise<void> {
-  await prisma.packagingUnit.updateMany({
-    where: { transportUnitId },
-    data: { isMci: false },
-  });
+  await prisma.$transaction([
+    prisma.packagingUnit.updateMany({
+      where: { transportUnitId },
+      data: { isMci: false },
+    }),
+    prisma.goodsItem.updateMany({
+      where: { packagingUnit: { transportUnitId } },
+      data: { isMci: false },
+    }),
+  ]);
 }
 
-export async function markMciById(mciId: string): Promise<void> {
+export async function markPackagingMciById(mciId: string): Promise<void> {
   await prisma.packagingUnit.update({
     where: { id: mciId },
     data: { isMci: true },
   });
 }
 
-export async function getMarkedMciId(transportUnitId: string): Promise<string | null> {
-  const mci = await prisma.packagingUnit.findFirst({
-    where: { transportUnitId, isMci: true },
-    select: { id: true },
+export async function markGoodsMciById(mciId: string): Promise<void> {
+  await prisma.goodsItem.update({
+    where: { id: mciId },
+    data: { isMci: true },
   });
-  return mci?.id ?? null;
 }
 
-export async function getPackagingUnitById(
+export type MciEntityRef = {
+  id: string;
+  type: MciEntityType;
+  status: string;
+  productId: string | null;
+};
+
+export async function getMcisForTransport(transportUnitId: string): Promise<MciEntityRef[]> {
+  const [packaging, goods] = await Promise.all([
+    prisma.packagingUnit.findMany({
+      where: { transportUnitId, isMci: true },
+      select: {
+        id: true,
+        status: true,
+        goods: { select: { productId: true }, take: 1 },
+      },
+      orderBy: { depth: 'asc' },
+    }),
+    prisma.goodsItem.findMany({
+      where: { packagingUnit: { transportUnitId }, isMci: true },
+      select: { id: true, status: true, productId: true },
+    }),
+  ]);
+
+  return [
+    ...packaging.map((m) => ({
+      id: m.id,
+      type: 'packaging' as const,
+      status: m.status,
+      productId: m.goods[0]?.productId ?? null,
+    })),
+    ...goods.map((m) => ({
+      id: m.id,
+      type: 'goods' as const,
+      status: m.status,
+      productId: m.productId,
+    })),
+  ];
+}
+
+export async function getMciEntity(
   id: string
-): Promise<{ id: string; path: string; transportUnitId: string | null } | null> {
-  return prisma.packagingUnit.findUnique({
+): Promise<
+  | { type: 'packaging'; id: string; path: string; transportUnitId: string }
+  | { type: 'goods'; id: string; transportUnitId: string }
+  | null
+> {
+  const packaging = await prisma.packagingUnit.findUnique({
     where: { id },
-    select: { id: true, path: true, transportUnitId: true },
+    select: { id: true, path: true, transportUnitId: true, isMci: true },
   });
+  if (packaging?.isMci && packaging.transportUnitId) {
+    return {
+      type: 'packaging',
+      id: packaging.id,
+      path: packaging.path,
+      transportUnitId: packaging.transportUnitId,
+    };
+  }
+
+  const goods = await prisma.goodsItem.findUnique({
+    where: { id },
+    select: { id: true, isMci: true, packagingUnit: { select: { transportUnitId: true } } },
+  });
+  if (goods?.isMci && goods.packagingUnit.transportUnitId) {
+    return {
+      type: 'goods',
+      id: goods.id,
+      transportUnitId: goods.packagingUnit.transportUnitId,
+    };
+  }
+
+  return null;
 }
 
 export async function updatePackagingSubtreeStatus(
@@ -91,6 +261,14 @@ export async function updateGoodsInSubtreeStatus(
         OR: [{ id: mciId }, { path: { startsWith: pathPrefix } }],
       },
     },
+    data: { status },
+  });
+  return result.count;
+}
+
+export async function updateSingleGoodsStatus(goodsId: string, status: string): Promise<number> {
+  const result = await prisma.goodsItem.updateMany({
+    where: { id: goodsId },
     data: { status },
   });
   return result.count;

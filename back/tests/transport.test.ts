@@ -24,8 +24,6 @@ describe('Transport API integration', () => {
       payload: {
         transportCode: 'TRK-INT-001',
         transportType: 'truck',
-        departureCode: 'AMS',
-        arrivalCode: 'RTM',
         goodsCount: 10,
         packingDepth: 2,
       },
@@ -37,15 +35,13 @@ describe('Transport API integration', () => {
     expect(body.mciId).toBeTruthy();
   });
 
-  it('GET /api/transport/:id → tree contains isMci=true on exactly one node', async () => {
+  it('GET /api/transport/:id → tree contains at least one isMci node', async () => {
     const setup = await app.inject({
       method: 'POST',
       url: '/api/setup',
       payload: {
         transportCode: 'TRK-INT-002',
         transportType: 'container',
-        departureCode: 'AMS',
-        arrivalCode: 'BER',
         goodsCount: 5,
         packingDepth: 3,
       },
@@ -69,7 +65,59 @@ describe('Transport API integration', () => {
         return acc + (node.isMci ? 1 : 0) + countMci(childNodes);
       }, 0);
 
-    expect(countMci(transport.packagingTree)).toBe(1);
+    expect(countMci(transport.packagingTree)).toBeGreaterThanOrEqual(1);
+  });
+
+  it('multi-product setup → one MCI per product group', async () => {
+    const products = await app.inject({ method: 'GET', url: '/api/products' });
+    const catalog = products.json() as Array<{ sku: string }>;
+    expect(catalog.length).toBeGreaterThanOrEqual(2);
+
+    const setup = await app.inject({
+      method: 'POST',
+      url: '/api/setup',
+      payload: {
+        transportCode: 'TRK-MULTI',
+        transportType: 'truck',
+        productGroups: [
+          {
+            productSku: catalog[0].sku,
+            goodsCount: 4,
+            rootPackagingCount: 1,
+            nestingLevels: [{ childCount: 1 }],
+          },
+          {
+            productSku: catalog[1].sku,
+            goodsCount: 3,
+            rootPackagingCount: 1,
+            nestingLevels: [{ childCount: 2 }],
+          },
+        ],
+      },
+    });
+
+    expect(setup.statusCode).toBe(200);
+    const { transportUnitId, mciIds } = setup.json() as {
+      transportUnitId: string;
+      mciIds: string[];
+    };
+    expect(mciIds.length).toBeGreaterThanOrEqual(2);
+
+    const detail = await app.inject({
+      method: 'GET',
+      url: `/api/transport/${transportUnitId}`,
+    });
+    const transport = detail.json() as {
+      packagingTree: Array<{ isMci: boolean; children: unknown[] }>;
+    };
+
+    const countMci = (nodes: Array<{ isMci: boolean; children: unknown[] }>): number =>
+      nodes.reduce((acc, node) => {
+        const childNodes = node.children as Array<{ isMci: boolean; children: unknown[] }>;
+        return acc + (node.isMci ? 1 : 0) + countMci(childNodes);
+      }, 0);
+
+    expect(countMci(transport.packagingTree)).toBeGreaterThanOrEqual(2);
   });
 
   it('POST /api/transport/:id/dispatch with empty JSON body → 200', async () => {
@@ -79,8 +127,6 @@ describe('Transport API integration', () => {
       payload: {
         transportCode: 'TRK-INT-003B',
         transportType: 'van',
-        departureCode: 'HAM',
-        arrivalCode: 'RTM',
         goodsCount: 4,
         packingDepth: 2,
       },
@@ -97,15 +143,13 @@ describe('Transport API integration', () => {
     expect(dispatch.statusCode).toBe(200);
   });
 
-  it('POST /api/transport/:id/dispatch → all goods status = in_transit', async () => {
+  it('POST /api/transport/:id/dispatch → goods under MCI become in_transit', async () => {
     const setup = await app.inject({
       method: 'POST',
       url: '/api/setup',
       payload: {
         transportCode: 'TRK-INT-003',
         transportType: 'van',
-        departureCode: 'HAM',
-        arrivalCode: 'RTM',
         goodsCount: 8,
         packingDepth: 2,
       },
@@ -127,27 +171,32 @@ describe('Transport API integration', () => {
 
     const transport = detail.json() as {
       packagingTree: Array<{
+        isMci: boolean;
         status: string;
         goods: Array<{ status: string }>;
         children: unknown[];
       }>;
     };
 
-    const collectGoods = (
-      nodes: Array<{
-        goods: Array<{ status: string }>;
-        children: unknown[];
-      }>
-    ): string[] =>
-      nodes.flatMap((node) => {
-        const childNodes = node.children as typeof nodes;
-        return [
-          ...node.goods.map((g) => g.status),
-          ...collectGoods(childNodes),
-        ];
-      });
+    type TreeNode = {
+      isMci: boolean;
+      status: string;
+      goods: Array<{ status: string }>;
+      children: TreeNode[];
+    };
 
-    const statuses = collectGoods(transport.packagingTree);
+    const collectSubtreeStatuses = (node: TreeNode): string[] => [
+      node.status,
+      ...node.goods.map((g) => g.status),
+      ...node.children.flatMap(collectSubtreeStatuses),
+    ];
+
+    const findMcis = (nodes: TreeNode[]): TreeNode[] =>
+      nodes.flatMap((n) => [...(n.isMci ? [n] : []), ...findMcis(n.children)]);
+
+    const statuses = findMcis(transport.packagingTree as TreeNode[]).flatMap(
+      collectSubtreeStatuses
+    );
     expect(statuses.length).toBeGreaterThan(0);
     expect(statuses.every((s) => s === 'in_transit')).toBe(true);
   });
@@ -161,8 +210,6 @@ describe('Transport API integration', () => {
       payload: {
         transportCode: 'TRK-INT-004',
         transportType: 'truck',
-        departureCode: 'AMS',
-        arrivalCode: 'RTM',
         goodsCount: 3,
         packingDepth: 2,
       },

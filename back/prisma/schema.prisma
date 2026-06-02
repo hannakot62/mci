@@ -27,10 +27,10 @@ model TransportUnit {
   type                String
   status              String          @default("idle")
 
-  departureLocationId String
-  arrivalLocationId   String
-  departureLocation   Location        @relation("DepartureLocation", fields: [departureLocationId], references: [id])
-  arrivalLocation     Location        @relation("ArrivalLocation", fields: [arrivalLocationId], references: [id])
+  departureLocationId String?
+  arrivalLocationId   String?
+  departureLocation   Location?       @relation("DepartureLocation", fields: [departureLocationId], references: [id])
+  arrivalLocation     Location?       @relation("ArrivalLocation", fields: [arrivalLocationId], references: [id])
 
   packagingUnits      PackagingUnit[]
   createdAt           DateTime        @default(now())
@@ -91,6 +91,7 @@ model GoodsItem {
   id              String        @id @default(uuid())
   serialNumber    String        @unique @default(uuid())
   status          String        @default("pending")
+  isMci           Boolean       @default(false)
 
   packagingUnitId String
   packagingUnit   PackagingUnit @relation(fields: [packagingUnitId], references: [id])

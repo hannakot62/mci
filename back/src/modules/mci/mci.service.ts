@@ -1,29 +1,43 @@
 import { recordTiming } from '../metrics/timer.service';
 import {
+  findGoodsMciCandidates,
   findMciCandidate,
-  getMarkedMciId,
-  getPackagingUnitById,
-  markMciById,
+  findPackagingMciCandidates,
+  getMcisForTransport,
+  getMciEntity,
+  markGoodsMciById,
+  markPackagingMciById,
   unmarkAllMci,
   updateGoodsInSubtreeStatus,
   updatePackagingSubtreeStatus,
+  updateSingleGoodsStatus,
 } from './mci.repository';
 
 export async function findMci(transportUnitId: string): Promise<string | null> {
   return findMciCandidate(transportUnitId);
 }
 
-export async function markMci(transportUnitId: string): Promise<string | null> {
-  return recordTiming('markMci', async () => {
-    const mciId = await findMci(transportUnitId);
+export async function findMcis(transportUnitId: string): Promise<string[]> {
+  const packaging = await findPackagingMciCandidates(transportUnitId);
+  const goods = await findGoodsMciCandidates(transportUnitId);
+  return [...packaging.map((p) => p.id), ...goods.map((g) => g.id)];
+}
 
+export async function markMci(transportUnitId: string): Promise<string[]> {
+  return recordTiming('markMci', async () => {
     await unmarkAllMci(transportUnitId);
 
-    if (mciId) {
-      await markMciById(mciId);
+    const packagingCandidates = await findPackagingMciCandidates(transportUnitId);
+    for (const { id } of packagingCandidates) {
+      await markPackagingMciById(id);
     }
 
-    return mciId;
+    const goodsCandidates = await findGoodsMciCandidates(transportUnitId);
+    for (const { id } of goodsCandidates) {
+      await markGoodsMciById(id);
+    }
+
+    return [...packagingCandidates.map((p) => p.id), ...goodsCandidates.map((g) => g.id)];
   });
 }
 
@@ -32,23 +46,26 @@ export async function updateStatusViaMci(
   status: string
 ): Promise<{ updatedPackaging: number; updatedGoods: number }> {
   return recordTiming('updateStatusViaMci', async () => {
-    const mci = await getPackagingUnitById(mciId);
-    if (!mci?.transportUnitId) {
+    const entity = await getMciEntity(mciId);
+    if (!entity) {
       return { updatedPackaging: 0, updatedGoods: 0 };
     }
 
-    const transportUnitId = mci.transportUnitId;
+    if (entity.type === 'goods') {
+      const updatedGoods = await updateSingleGoodsStatus(entity.id, status);
+      return { updatedPackaging: 0, updatedGoods };
+    }
 
     const updatedPackaging = await updatePackagingSubtreeStatus(
-      transportUnitId,
-      mciId,
-      mci.path,
+      entity.transportUnitId,
+      entity.id,
+      entity.path,
       status
     );
     const updatedGoods = await updateGoodsInSubtreeStatus(
-      transportUnitId,
-      mciId,
-      mci.path,
+      entity.transportUnitId,
+      entity.id,
+      entity.path,
       status
     );
 
@@ -56,6 +73,25 @@ export async function updateStatusViaMci(
   });
 }
 
-export async function getMciForTransport(transportUnitId: string): Promise<string | null> {
-  return getMarkedMciId(transportUnitId);
+export async function updateAllMcisStatus(
+  transportUnitId: string,
+  status: string
+): Promise<{ mciIds: string[]; updatedPackaging: number; updatedGoods: number }> {
+  const mcis = await getMcisForTransport(transportUnitId);
+  if (mcis.length === 0) {
+    return { mciIds: [], updatedPackaging: 0, updatedGoods: 0 };
+  }
+
+  let updatedPackaging = 0;
+  let updatedGoods = 0;
+
+  for (const { id } of mcis) {
+    const result = await updateStatusViaMci(id, status);
+    updatedPackaging += result.updatedPackaging;
+    updatedGoods += result.updatedGoods;
+  }
+
+  return { mciIds: mcis.map((m) => m.id), updatedPackaging, updatedGoods };
 }
+
+export { getMcisForTransport };

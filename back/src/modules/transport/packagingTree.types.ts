@@ -1,8 +1,13 @@
+export type LocationBrief = { id: string; code: string; name: string };
+
 export type PackagingTreeGoodsItem = {
   id: string;
   serialNumber: string;
   status: string;
+  isMci: boolean;
   product: { id: string; name: string; sku: string };
+  firstLocation: LocationBrief;
+  lastLocation: LocationBrief;
 };
 
 export type PackagingTreeNode = {
@@ -12,6 +17,8 @@ export type PackagingTreeNode = {
   path: string;
   depth: number;
   packagingType: { id: string; name: string };
+  firstLocation: LocationBrief;
+  lastLocation: LocationBrief;
   goods: PackagingTreeGoodsItem[];
   goodsCount: number;
   goodsTruncated: boolean;

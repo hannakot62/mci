@@ -2,6 +2,6 @@ export interface MockSummary {
   transportCode: string;
   packagingCount: number;
   goodsCount: number;
-  packingDepth: number;
+  productGroupCount: number;
+  mciCount: number;
 }
-

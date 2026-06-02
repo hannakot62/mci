@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "GoodsItem" ADD COLUMN "isMci" BOOLEAN NOT NULL DEFAULT false;

@@ -59,16 +59,11 @@ export async function ensureBaseSeed(): Promise<{
   };
 }
 
-export async function createTransport(
-  departureId: string,
-  arrivalId: string
-): Promise<{ transportId: string }> {
+export async function createTransport(): Promise<{ transportId: string }> {
   const transport = await prisma.transportUnit.create({
     data: {
       code: `TST-${randomUUID().slice(0, 8)}`,
       type: 'truck',
-      departureLocationId: departureId,
-      arrivalLocationId: arrivalId,
     },
   });
   return { transportId: transport.id };

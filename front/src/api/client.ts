@@ -5,6 +5,13 @@ export interface Location {
   type: string;
 }
 
+export interface ProductCatalogItem {
+  id: string;
+  sku: string;
+  name: string;
+  allowedPackagingTypes: string;
+}
+
 export interface TimingEntry {
   id: string;
   route: string;
@@ -15,23 +22,34 @@ export interface TimingEntry {
   label?: string;
 }
 
+export interface NestingLevelConfig {
+  childCount: number;
+  packagingTypeName?: string;
+}
+
+export interface ProductGroupConfig {
+  productSku: string;
+  goodsCount: number;
+  rootPackagingCount: number;
+  nestingLevels: NestingLevelConfig[];
+}
+
 export interface SetupPayload {
   transportCode: string;
   transportType: 'truck' | 'container' | 'van';
-  departureCode: string;
-  arrivalCode: string;
-  goodsCount: number;
-  packingDepth: number;
+  productGroups: ProductGroupConfig[];
 }
 
 export interface SetupResponse {
   transportUnitId: string;
+  mciIds: string[];
   mciId: string | null;
   summary: {
     transportCode: string;
     packagingCount: number;
     goodsCount: number;
-    packingDepth: number;
+    productGroupCount: number;
+    mciCount: number;
   };
   timings: TimingEntry[];
 }
@@ -41,15 +59,18 @@ export interface TransportSummary {
   code: string;
   type: string;
   status: string;
-  departureLocation: { code: string; name: string };
-  arrivalLocation: { code: string; name: string };
+  departureLocation?: { code: string; name: string } | null;
+  arrivalLocation?: { code: string; name: string } | null;
 }
 
 export interface GoodsNode {
   id: string;
   serialNumber: string;
   status: string;
+  isMci: boolean;
   product: { id: string; name: string; sku: string };
+  firstLocation: Location;
+  lastLocation: Location;
 }
 
 export interface PackagingTreeNode {
@@ -59,6 +80,8 @@ export interface PackagingTreeNode {
   path: string;
   depth: number;
   packagingType: { id: string; name: string };
+  firstLocation: Location;
+  lastLocation: Location;
   goods: GoodsNode[];
   goodsCount: number;
   goodsTruncated?: boolean;
@@ -75,14 +98,15 @@ export interface TransportDetail {
   code: string;
   type: string;
   status: string;
-  departureLocation: Location;
-  arrivalLocation: Location;
+  departureLocation?: Location | null;
+  arrivalLocation?: Location | null;
   packagingTree: PackagingTreeNode[];
   treeMeta?: TransportTreeMeta;
 }
 
 export interface StatusUpdateResponse {
-  mciId: string;
+  mciIds: string[];
+  mciId: string | null;
   updatedPackaging: number;
   updatedGoods: number;
   timings: TimingEntry[];
@@ -112,8 +136,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function listLocations(): Promise<Location[]> {
-  return request<Location[]>('/api/locations');
+export function listProducts(): Promise<ProductCatalogItem[]> {
+  return request<ProductCatalogItem[]>('/api/products');
 }
 
 export function setup(payload: SetupPayload): Promise<SetupResponse> {

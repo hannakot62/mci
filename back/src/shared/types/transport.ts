@@ -9,7 +9,7 @@ export type TransportUnitSummary = {
   type: string;
   status: TransportUnitStatus | string;
   createdAt: Date;
-  departureLocation: { code: string; name: string };
-  arrivalLocation: { code: string; name: string };
+  departureLocation?: { code: string; name: string } | null;
+  arrivalLocation?: { code: string; name: string } | null;
 };
 

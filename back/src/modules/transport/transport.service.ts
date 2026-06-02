@@ -62,6 +62,8 @@ export async function getTransportWithTree(id: string) {
         depth: pu.depth,
         parentId: pu.parentId,
         packagingType: pu.packagingType,
+        firstLocation: pu.firstLocation,
+        lastLocation: pu.lastLocation,
         goods: nodeGoods,
         goodsCount,
         goodsTruncated: !goodsInline && goodsCount > nodeGoods.length,

@@ -7,11 +7,16 @@ import { NotFoundError } from '../../core/errors/AppError';
 
 const prisma = getPrismaClient();
 
+const locationSelect = { select: { id: true, code: true, name: true } } as const;
+
 const goodsSelect = {
   id: true,
   serialNumber: true,
   status: true,
+  isMci: true,
   product: { select: { id: true, name: true, sku: true } },
+  firstLocation: locationSelect,
+  lastLocation: locationSelect,
 } as const;
 
 export async function listTransportUnits() {
@@ -50,6 +55,8 @@ export async function listPackagingUnitsForTransport(transportUnitId: string) {
     where: { transportUnitId },
     include: {
       packagingType: { select: { id: true, name: true } },
+      firstLocation: locationSelect,
+      lastLocation: locationSelect,
     },
     orderBy: { depth: 'asc' },
   });
