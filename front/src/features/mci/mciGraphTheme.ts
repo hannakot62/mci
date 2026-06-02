@@ -1,4 +1,4 @@
-import type { PackagingTreeNode } from '../api/client';
+import type { PackagingTreeNode } from '@/api/client';
 
 export type MciProductPalette = {
   accent: string;
@@ -21,6 +21,12 @@ export const MCI_STATUS_COLORS: Record<string, string> = {
   in_transit: '#fbbf24',
   delivered: '#4ade80',
   idle: '#64748b',
+};
+
+export const MCI_FALLBACK_PALETTE: MciProductPalette = {
+  accent: '#fbbf24',
+  soft: 'rgba(251, 191, 36, 0.35)',
+  label: 'default',
 };
 
 export function resolveProductSkuInSubtree(node: PackagingTreeNode): string {
@@ -73,4 +79,8 @@ export function buildProductPaletteMap(skus: string[]): Map<string, MciProductPa
 export function shortSku(sku: string): string {
   if (sku.length <= 14) return sku;
   return `${sku.slice(0, 12)}…`;
+}
+
+export function formatMciStatus(status: string): string {
+  return status.replace(/_/g, ' ');
 }

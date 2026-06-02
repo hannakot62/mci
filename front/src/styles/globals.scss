@@ -1,5 +1,5 @@
-@import './variables.scss';
-@import './mixins.scss';
+@use './variables' as *;
+@use './mixins' as *;
 
 * {
   margin: 0;
@@ -22,11 +22,12 @@ main {
   min-height: 100vh;
 }
 
-// ============================================
-// BASE ELEMENTS
-// ============================================
-
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   margin-bottom: spacing(lg);
   font-weight: 600;
   line-height: line-height(tight);
@@ -62,10 +63,6 @@ a {
   }
 }
 
-// ============================================
-// FORM
-// ============================================
-
 form {
   @include flex-col(spacing(md));
 }
@@ -76,10 +73,10 @@ label {
   margin-bottom: spacing(sm);
 }
 
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='number'],
 textarea,
 select {
   @include input-base;
@@ -89,10 +86,6 @@ textarea {
   resize: vertical;
   min-height: 100px;
 }
-
-// ============================================
-// UTILITIES
-// ============================================
 
 .container {
   @include container;

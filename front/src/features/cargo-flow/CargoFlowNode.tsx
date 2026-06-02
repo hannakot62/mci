@@ -1,37 +1,9 @@
 import React, { memo, type CSSProperties } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-
-export type CargoNodeKind = 'transport' | 'packaging' | 'goods' | 'goods-summary';
-
-export type CargoNodeData = {
-  kind: CargoNodeKind;
-  title: string;
-  subtitle?: string;
-  route?: string;
-  status?: string;
-  statusColor?: string;
-  isMci?: boolean;
-  mciProductSku?: string;
-  mciAccent?: string;
-  mciSoft?: string;
-  mciStatusColor?: string;
-};
+import { StatusPill } from './StatusPill';
+import type { CargoNodeData } from './cargoNode.types';
 
 const HANDLE_STYLE = { opacity: 0, width: 6, height: 6 };
-
-function StatusPill({
-  status,
-  color,
-}: {
-  status: string;
-  color: string;
-}): React.ReactElement {
-  return (
-    <span className="cargo-node__status" style={{ backgroundColor: color }}>
-      {status.replace('_', ' ')}
-    </span>
-  );
-}
 
 function CargoFlowNodeComponent({ data }: NodeProps): React.ReactElement {
   const d = data as CargoNodeData;
@@ -68,7 +40,10 @@ function CargoFlowNodeComponent({ data }: NodeProps): React.ReactElement {
       <div className="cargo-node__header">
         <span className="cargo-node__title">{d.title}</span>
         {d.isMci && d.mciProductSku && (
-          <span className="cargo-node__product" style={{ color: d.mciAccent, borderColor: d.mciAccent }}>
+          <span
+            className="cargo-node__product"
+            style={{ color: d.mciAccent, borderColor: d.mciAccent }}
+          >
             {d.mciProductSku}
           </span>
         )}

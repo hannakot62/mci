@@ -1,3 +1,11 @@
 export { Button } from './Button';
-export { Input, TextArea } from './Input';
 export { Card } from './Card';
+export { FieldLabel } from './FieldLabel';
+export { Icon } from './Icon';
+export { IconButton } from './IconButton';
+export { Input, TextArea } from './Input';
+export { PanelToggle } from './PanelToggle';
+export { RangeInput } from './RangeInput';
+export { ChevronIcon } from './icons/ChevronIcon';
+export { CloseIcon } from './icons/CloseIcon';
+export { TrashIcon } from './icons/TrashIcon';

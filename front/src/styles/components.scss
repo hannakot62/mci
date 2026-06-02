@@ -1,0 +1,268 @@
+@use './variables' as *;
+@use './mixins' as *;
+
+.btn {
+  @include button();
+
+  &--primary {
+    background: color(primary);
+    color: color(white);
+
+    &:hover:not(:disabled) {
+      background: color(primary-dark);
+    }
+  }
+
+  &--danger {
+    background: color(danger);
+    color: color(white);
+
+    &:hover:not(:disabled) {
+      background: color(danger-dark);
+    }
+  }
+
+  &--outline {
+    @include button-outline();
+  }
+
+  &--ghost {
+    @include button-ghost();
+  }
+
+  &--link {
+    @include button-ghost(color(primary));
+    padding: 0;
+    min-height: unset;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  &--sm {
+    @include padding(spacing(sm), spacing(md));
+    @include font(xs, 500);
+  }
+
+  &--md {
+    @include padding(spacing(md), spacing(lg));
+    @include font(sm, 500);
+  }
+
+  &--lg {
+    @include padding(spacing(lg), spacing(xl));
+    @include font(base, 500);
+  }
+}
+
+.input-group {
+  @include flex-col(spacing(sm));
+}
+
+.input-label {
+  @include font(sm, 500, normal, color(dark));
+}
+
+.input,
+.textarea {
+  @include input-base;
+
+  &--error {
+    @include input-error;
+  }
+}
+
+.textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.input-error {
+  @include font(xs, 400, normal, color(danger));
+}
+
+.range-input {
+  @include flex-col(spacing(xs));
+  width: 100%;
+}
+
+.range-input__header {
+  @include flex-between;
+  gap: spacing(sm);
+}
+
+.range-input__label {
+  @include font(sm, $field-label-weight, normal, $field-label-color);
+  margin: 0;
+}
+
+.range-input__value {
+  @include font(xs, 600, normal, #94a3b8);
+  font-variant-numeric: tabular-nums;
+}
+
+.range-input__track-wrap {
+  position: relative;
+  height: 1.35rem;
+  display: flex;
+  align-items: center;
+}
+
+.range-input__track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0.35rem;
+  border-radius: radius(full);
+  background: #334155;
+  pointer-events: none;
+}
+
+.range-input__fill {
+  position: absolute;
+  left: 0;
+  height: 0.35rem;
+  border-radius: radius(full);
+  background: linear-gradient(90deg, #2563eb, #38bdf8);
+  pointer-events: none;
+}
+
+.range-input__native {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin: 0;
+  height: 1.35rem;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid #38bdf8;
+    outline-offset: 2px;
+    border-radius: radius(sm);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  &::-webkit-slider-runnable-track {
+    height: 0.35rem;
+    background: transparent;
+  }
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 0.95rem;
+    height: 0.95rem;
+    margin-top: -0.3rem;
+    border-radius: radius(full);
+    background: #f8fafc;
+    border: 2px solid #2563eb;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  }
+
+  &::-moz-range-track {
+    height: 0.35rem;
+    background: transparent;
+    border: none;
+  }
+
+  &::-moz-range-thumb {
+    width: 0.95rem;
+    height: 0.95rem;
+    border-radius: radius(full);
+    background: #f8fafc;
+    border: 2px solid #2563eb;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  }
+}
+
+.icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.icon-btn {
+  @include flex-center;
+  @include size(2rem);
+  padding: 0;
+  border-radius: radius(sm);
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: background $transition-base, border-color $transition-base;
+
+  &:hover:not(:disabled) {
+    background: #1e293b;
+    border-color: #64748b;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &--danger {
+    border-color: #7f1d1d;
+    color: #fca5a5;
+
+    &:hover:not(:disabled) {
+      background: rgba(127, 29, 29, 0.35);
+    }
+  }
+}
+
+.panel-toggle {
+  @include flex-center;
+  flex-shrink: 0;
+  @include size(1.75rem);
+  padding: 0;
+  border-radius: radius(sm);
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: background $transition-base;
+
+  &:hover {
+    background: #334155;
+  }
+
+  &--edge {
+    position: absolute;
+    z-index: 12;
+  }
+
+  &--setup {
+    top: 0.65rem;
+    right: 0.5rem;
+  }
+}
+
+.card {
+  @include card();
+}
+
+.error-message {
+  @include box(spacing(md), color(danger-light), radius(sm));
+  @include font(sm, 400, normal, color(danger));
+  border-left: 4px solid color(danger);
+}
+
+.loading {
+  @include flex-center;
+  padding: spacing(3xl) spacing(lg);
+  @include font(base, 400, normal, color(gray-text));
+}
+
+.empty-state {
+  @include box(spacing(2xl), color(gray-lighter), radius(md));
+  @include flex-center;
+  @include font(base, 400, normal, color(gray-text));
+  min-height: 200px;
+}

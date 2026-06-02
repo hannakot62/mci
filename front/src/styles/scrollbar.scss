@@ -1,0 +1,32 @@
+@use './variables' as *;
+
+.app-shell,
+.app-shell * {
+  scrollbar-width: thin;
+  scrollbar-color: $scrollbar-thumb $scrollbar-track;
+}
+
+.app-shell *::-webkit-scrollbar {
+  width: $scrollbar-size;
+  height: $scrollbar-size;
+}
+
+.app-shell *::-webkit-scrollbar-track {
+  background: $scrollbar-track;
+  border-radius: $scrollbar-radius;
+}
+
+.app-shell *::-webkit-scrollbar-thumb {
+  background: $scrollbar-thumb;
+  border-radius: $scrollbar-radius;
+  border: 2px solid $scrollbar-track;
+  transition: background $transition-base;
+}
+
+.app-shell *::-webkit-scrollbar-thumb:hover {
+  background: $scrollbar-thumb-hover;
+}
+
+.app-shell *::-webkit-scrollbar-corner {
+  background: $scrollbar-track;
+}

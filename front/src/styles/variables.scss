@@ -1,3 +1,5 @@
+@use 'sass:map';
+
 // ============================================
 // COLORS
 // ============================================
@@ -22,7 +24,7 @@ $colors: (
 );
 
 @function color($name) {
-  @return map-get($colors, $name);
+  @return map.get($colors, $name);
 }
 
 // ============================================
@@ -42,7 +44,7 @@ $font-sizes: (
 );
 
 @function font-size($name) {
-  @return map-get($font-sizes, $name);
+  @return map.get($font-sizes, $name);
 }
 
 $line-heights: (
@@ -52,7 +54,7 @@ $line-heights: (
 );
 
 @function line-height($name) {
-  @return map-get($line-heights, $name);
+  @return map.get($line-heights, $name);
 }
 
 // ============================================
@@ -72,7 +74,7 @@ $spacing: (
 );
 
 @function spacing($name) {
-  @return map-get($spacing, $name);
+  @return map.get($spacing, $name);
 }
 
 $border-radius: (
@@ -84,7 +86,7 @@ $border-radius: (
 );
 
 @function radius($name) {
-  @return map-get($border-radius, $name);
+  @return map.get($border-radius, $name);
 }
 
 // ============================================
@@ -99,7 +101,7 @@ $shadows: (
 );
 
 @function shadow($name) {
-  @return map-get($shadows, $name);
+  @return map.get($shadows, $name);
 }
 
 // ============================================
@@ -114,7 +116,7 @@ $breakpoints: (
 );
 
 @function breakpoint($name) {
-  @return map-get($breakpoints, $name);
+  @return map.get($breakpoints, $name);
 }
 
 // ============================================
@@ -124,6 +126,16 @@ $breakpoints: (
 $transition-fast: 0.15s ease;
 $transition-base: 0.2s ease;
 $transition-slow: 0.3s ease;
+$transition-mci: 0.45s ease;
+
+$field-label-color: #cbd5e1;
+$field-label-weight: 500;
+
+$scrollbar-size: 8px;
+$scrollbar-radius: 9999px;
+$scrollbar-track: #0f172a;
+$scrollbar-thumb: #475569;
+$scrollbar-thumb-hover: #64748b;
 
 // ============================================
 // CONTAINERS

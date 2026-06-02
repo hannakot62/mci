@@ -1,46 +1,16 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
-import {
-  Background,
-  Controls,
-  ReactFlow,
-  type Edge,
-  type Node,
-  Position,
-  useEdgesState,
-  useNodesState,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import dagre from '@dagrejs/dagre';
-import type { Location, PackagingTreeNode, TransportDetail } from '../api/client';
-import { CargoFlowNode, type CargoNodeData } from './CargoFlowNode';
-import { MciLegend, type MciLegendEntry } from './MciLegend';
+import type { Edge, Node } from '@xyflow/react';
+import type { Location, PackagingTreeNode, TransportDetail } from '@/api/client';
+import type { CargoNodeData } from '@/features/cargo-flow/cargoNode.types';
+import type { MciLegendEntry } from '@/features/mci/MciLegend';
 import {
   buildProductPaletteMap,
   collectMciProductSkus,
   MCI_STATUS_COLORS,
   resolveProductSkuInSubtree,
   shortSku,
-} from './mciGraphTheme';
-
-interface CargoTreeProps {
-  transport: TransportDetail | null;
-}
-
-const MAX_GOODS_PER_NODE = 2;
-
-const NODE_SIZE: Record<CargoNodeData['kind'], { width: number; height: number }> = {
-  transport: { width: 148, height: 46 },
-  packaging: { width: 158, height: 62 },
-  goods: { width: 132, height: 52 },
-  'goods-summary': { width: 108, height: 40 },
-};
-
-const nodeTypes = { cargo: CargoFlowNode };
-
-const defaultEdgeOptions = {
-  type: 'smoothstep' as const,
-  style: { stroke: '#475569', strokeWidth: 1.25 },
-};
+} from '@/features/mci/mciGraphTheme';
+import { defaultEdgeOptions, MAX_GOODS_PER_NODE, NODE_SIZE } from './cargoTree.constants';
+import { layoutGraph } from './layoutGraph';
 
 function truncateSerial(serial: string): string {
   return serial.length > 8 ? `${serial.slice(0, 8)}…` : serial;
@@ -50,42 +20,7 @@ function routeLabel(from: Location, to: Location): string {
   return `${from.code}→${to.code}`;
 }
 
-function layoutGraph(nodes: Node[], edges: Edge[]): Node[] {
-  const g = new dagre.graphlib.Graph();
-  g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({
-    rankdir: 'TB',
-    nodesep: 24,
-    ranksep: 46,
-    edgesep: 12,
-    marginx: 16,
-    marginy: 16,
-  });
-
-  nodes.forEach((node) => {
-    const kind = (node.data as CargoNodeData).kind;
-    const size = NODE_SIZE[kind];
-    g.setNode(node.id, { width: size.width, height: size.height });
-  });
-
-  edges.forEach((edge) => g.setEdge(edge.source, edge.target));
-  dagre.layout(g);
-
-  return nodes.map((node) => {
-    const kind = (node.data as CargoNodeData).kind;
-    const { width, height } = NODE_SIZE[kind];
-    const pos = g.node(node.id);
-    return {
-      ...node,
-      type: 'cargo',
-      position: { x: pos.x - width / 2, y: pos.y - height / 2 },
-      sourcePosition: Position.Bottom,
-      targetPosition: Position.Top,
-    };
-  });
-}
-
-function buildFlowElements(transport: TransportDetail): {
+export function buildFlowElements(transport: TransportDetail): {
   nodes: Node[];
   edges: Edge[];
   legend: MciLegendEntry[];
@@ -177,15 +112,15 @@ function buildFlowElements(transport: TransportDetail): {
           const palette = productPalette.get(sku);
           const accent = palette?.accent ?? '#eab308';
           const soft = palette?.soft ?? 'rgba(252, 211, 77, 0.34)';
-          const statusColor = MCI_STATUS_COLORS[good.status] ?? '#94a3b8';
+          const goodStatusColor = MCI_STATUS_COLORS[good.status] ?? '#94a3b8';
 
           goodMciExtras = {
             isMci: true,
             mciProductSku: shortSku(sku),
             mciAccent: accent,
             mciSoft: soft,
-            mciStatusColor: statusColor,
-            statusColor,
+            mciStatusColor: goodStatusColor,
+            statusColor: goodStatusColor,
           };
           goodAccent = accent;
 
@@ -261,61 +196,4 @@ function buildFlowElements(transport: TransportDetail): {
     edges: styledEdges,
     legend: [...legendBySku.values()],
   };
-}
-
-export function CargoTree({ transport }: CargoTreeProps): React.ReactElement {
-  const elements = useMemo(
-    () =>
-      transport
-        ? buildFlowElements(transport)
-        : { nodes: [], edges: [], legend: [] as MciLegendEntry[] },
-    [transport]
-  );
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(elements.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(elements.edges);
-
-  const syncElements = useCallback(() => {
-    setNodes(elements.nodes);
-    setEdges(elements.edges);
-  }, [elements, setNodes, setEdges]);
-
-  useEffect(() => {
-    syncElements();
-  }, [syncElements]);
-
-  if (!transport) {
-    return (
-      <div className="cargo-tree empty">
-        <p>Generate cargo to visualize the packaging hierarchy.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="cargo-tree">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        defaultEdgeOptions={defaultEdgeOptions}
-        fitView
-        fitViewOptions={{ padding: 0.12, maxZoom: 1.1 }}
-        minZoom={0.12}
-        maxZoom={1.4}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        elementsSelectable={false}
-        panOnScroll
-        zoomOnScroll
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background gap={16} size={1} color="#1a2438" />
-        <Controls showInteractive={false} />
-      </ReactFlow>
-      <MciLegend entries={elements.legend} />
-    </div>
-  );
 }

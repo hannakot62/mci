@@ -1,5 +1,5 @@
 import React from 'react';
-import { MCI_STATUS_COLORS, shortSku, type MciProductPalette } from './mciGraphTheme';
+import { formatMciStatus, MCI_STATUS_COLORS, shortSku, type MciProductPalette } from './mciGraphTheme';
 
 export type MciLegendEntry = {
   sku: string;
@@ -29,7 +29,7 @@ export function MciLegend({ entries }: MciLegendProps): React.ReactElement | nul
               className={`mci-legend__status mci-legend__status--${status}`}
               style={{ borderColor: MCI_STATUS_COLORS[status] ?? '#94a3b8' }}
             >
-              {status.replace('_', ' ')}
+              {formatMciStatus(status)}
             </span>
           </li>
         ))}
