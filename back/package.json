@@ -1,7 +1,6 @@
 {
   "name": "fastify-api",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node dist/bootstrap/startServer.js",
