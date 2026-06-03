@@ -4,7 +4,7 @@ import { disconnectDatabase } from '../infrastructure/db/prisma';
 
 export const startServer = async (): Promise<void> => {
   try {
-    const fastify = createApp();
+    const fastify = await createApp();
     await fastify.listen({ port: config.port, host: config.host });
     // eslint-disable-next-line no-console
     console.log(`✅ Server running at http://${config.host}:${config.port}`);

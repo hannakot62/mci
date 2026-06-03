@@ -1,3 +1,5 @@
+import { apiUrl } from './config';
+
 export interface Location {
   id: string;
   code: string;
@@ -117,7 +119,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(path, {
+  const response = await fetch(apiUrl(path), {
     ...init,
     headers,
   });

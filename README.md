@@ -46,6 +46,12 @@ The app will be available at `http://localhost:5173`
 - `npm run preview` - Preview the production build
 - `npm test` - Run tests with Vitest
 
+## Deploy (GitHub Pages)
+
+Пошаговая инструкция: **[DEPLOY.md](./DEPLOY.md)**.
+
+Кратко: включить Pages (source: GitHub Actions), задеплоить `back` (например через `render.yaml`), в Variables репозитория задать `VITE_API_URL`.
+
 ## Features
 
 ✅ TypeScript end-to-end (Fastify + Prisma + React)

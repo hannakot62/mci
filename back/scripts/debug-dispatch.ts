@@ -3,9 +3,8 @@ import { disconnectDatabase } from '../src/infrastructure/db/prisma';
 import { getMcisForTransport, updateAllMcisStatus } from '../src/modules/mci/mci.service';
 import { TRANSPORT_UNIT_STATUS } from '../src/shared/constants/status';
 
-const app = createApp();
-
 async function main(): Promise<void> {
+  const app = await createApp();
   const products = await app.inject({ method: 'GET', url: '/api/products' });
   const catalog = products.json() as Array<{ sku: string }>;
   if (catalog.length === 0) {

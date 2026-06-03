@@ -1,4 +1,5 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import type { FastifyInstance } from 'fastify';
 import { createApp } from '../src/app';
 import { disconnectDatabase } from '../src/infrastructure/db/prisma';
 import { clearTimings } from '../src/modules/metrics/timer.store';
@@ -6,7 +7,11 @@ import type { ProductGroupConfig } from '../src/modules/setup/setup.types';
 import { resetCargoData } from './helpers';
 
 describe('Transport API integration', () => {
-  const app = createApp();
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = await createApp();
+  });
 
   beforeEach(async () => {
     clearTimings();

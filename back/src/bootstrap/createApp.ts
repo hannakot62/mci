@@ -1,4 +1,5 @@
-import Fastify, { type FastifyLoggerOptions } from 'fastify';
+import cors from '@fastify/cors';
+import Fastify, { type FastifyInstance, type FastifyLoggerOptions } from 'fastify';
 import { config } from '../config/env';
 import { errorHandler } from '../middleware/errorHandler';
 import { registerTimerPlugin } from '../modules/metrics/timer.plugin';
@@ -6,11 +7,25 @@ import { registerMetricsRoutes } from '../modules/metrics/metrics.routes';
 import { registerSetupRoutes } from '../modules/setup/setup.routes';
 import { registerTransportRoutes } from '../modules/transport/transport.routes';
 
-export const createApp = () => {
+const defaultDevOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+
+export const createApp = async (): Promise<FastifyInstance> => {
   const loggerConfig: FastifyLoggerOptions | boolean =
     config.logLevel === 'silent' ? false : { level: config.logLevel };
 
   const fastify = Fastify({ logger: loggerConfig });
+
+  const corsOrigins =
+    config.corsOrigins.length > 0
+      ? config.corsOrigins
+      : config.nodeEnv === 'production'
+        ? false
+        : defaultDevOrigins;
+
+  await fastify.register(cors, {
+    origin: corsOrigins,
+    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  });
 
   fastify.removeContentTypeParser('application/json');
   fastify.addContentTypeParser(
