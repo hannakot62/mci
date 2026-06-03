@@ -1,4 +1,9 @@
-export type CargoNodeKind = 'transport' | 'packaging' | 'goods' | 'goods-summary';
+export type CargoNodeKind =
+  | 'transport'
+  | 'packaging'
+  | 'goods'
+  | 'goods-summary'
+  | 'packaging-summary';
 
 export type CargoNodeData = {
   kind: CargoNodeKind;

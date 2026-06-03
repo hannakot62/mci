@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { getPrismaClient } from '../../infrastructure/db/prisma';
 import {
   TRANSPORT_TREE_GOODS_PREVIEW_PER_NODE,
@@ -18,6 +19,23 @@ const goodsSelect = {
   firstLocation: locationSelect,
   lastLocation: locationSelect,
 } as const;
+
+type GoodsPreviewRow = {
+  packagingUnitId: string;
+  id: string;
+  serialNumber: string;
+  status: string;
+  isMci: boolean;
+  product_id: string;
+  product_name: string;
+  product_sku: string;
+  first_loc_id: string;
+  first_loc_code: string;
+  first_loc_name: string;
+  last_loc_id: string;
+  last_loc_code: string;
+  last_loc_name: string;
+};
 
 export async function listTransportUnits() {
   return prisma.transportUnit.findMany({
@@ -86,32 +104,72 @@ export async function listAllGoodsForTransport(transportUnitId: string) {
 }
 
 /**
- * Loads a capped preview per packaging node (for large transports).
+ * Loads a capped preview per packaging node (for large transports) in one query.
  */
 export async function listGoodsPreviewForTransport(transportUnitId: string) {
-  const packagingIds = await prisma.packagingUnit.findMany({
-    where: {
-      transportUnitId,
-      goods: { some: {} },
-    },
-    select: { id: true },
-  });
-
-  const previews = await Promise.all(
-    packagingIds.map(({ id }) =>
-      prisma.goodsItem.findMany({
-        where: { packagingUnitId: id },
-        select: {
-          packagingUnitId: true,
-          ...goodsSelect,
-        },
-        take: TRANSPORT_TREE_GOODS_PREVIEW_PER_NODE,
-        orderBy: { createdAt: 'asc' },
-      })
+  const rows = await prisma.$queryRaw<GoodsPreviewRow[]>(Prisma.sql`
+    WITH ranked AS (
+      SELECT
+        gi.id,
+        gi."serialNumber",
+        gi.status,
+        gi."isMci",
+        gi."packagingUnitId",
+        gi."createdAt",
+        ROW_NUMBER() OVER (
+          PARTITION BY gi."packagingUnitId"
+          ORDER BY gi."createdAt" ASC
+        ) AS rn
+      FROM "GoodsItem" gi
+      INNER JOIN "PackagingUnit" pu ON gi."packagingUnitId" = pu.id
+      WHERE pu."transportUnitId" = ${transportUnitId}
     )
-  );
+    SELECT
+      r."packagingUnitId",
+      r.id,
+      r."serialNumber",
+      r.status,
+      r."isMci",
+      p.id AS product_id,
+      p.name AS product_name,
+      p.sku AS product_sku,
+      fl.id AS first_loc_id,
+      fl.code AS first_loc_code,
+      fl.name AS first_loc_name,
+      ll.id AS last_loc_id,
+      ll.code AS last_loc_code,
+      ll.name AS last_loc_name
+    FROM ranked r
+    INNER JOIN "GoodsItem" gi ON gi.id = r.id
+    INNER JOIN "Product" p ON gi."productId" = p.id
+    INNER JOIN "Location" fl ON gi."firstLocationId" = fl.id
+    INNER JOIN "Location" ll ON gi."lastLocationId" = ll.id
+    WHERE r.rn <= ${TRANSPORT_TREE_GOODS_PREVIEW_PER_NODE}
+    ORDER BY r."packagingUnitId", r."createdAt"
+  `);
 
-  return previews.flat();
+  return rows.map((row) => ({
+    packagingUnitId: row.packagingUnitId,
+    id: row.id,
+    serialNumber: row.serialNumber,
+    status: row.status,
+    isMci: row.isMci,
+    product: {
+      id: row.product_id,
+      name: row.product_name,
+      sku: row.product_sku,
+    },
+    firstLocation: {
+      id: row.first_loc_id,
+      code: row.first_loc_code,
+      name: row.first_loc_name,
+    },
+    lastLocation: {
+      id: row.last_loc_id,
+      code: row.last_loc_code,
+      name: row.last_loc_name,
+    },
+  }));
 }
 
 export function shouldInlineGoodsInTree(totalGoods: number): boolean {

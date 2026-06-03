@@ -1,5 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { getPrismaClient } from '../../infrastructure/db/prisma';
+import { createManyInBatches } from '../../infrastructure/db/batchInsert';
+import { MCI_MARK_BATCH_SIZE } from '../../shared/constants/limits';
 
 const prisma = getPrismaClient();
 
@@ -133,17 +135,27 @@ export async function unmarkAllMci(transportUnitId: string): Promise<void> {
   ]);
 }
 
-export async function markPackagingMciById(mciId: string): Promise<void> {
-  await prisma.packagingUnit.update({
-    where: { id: mciId },
-    data: { isMci: true },
+export async function markPackagingMciByIds(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+
+  await createManyInBatches(ids, MCI_MARK_BATCH_SIZE, async (batch) => {
+    await prisma.packagingUnit.updateMany({
+      where: { id: { in: batch } },
+      data: { isMci: true },
+    });
+    return { count: batch.length };
   });
 }
 
-export async function markGoodsMciById(mciId: string): Promise<void> {
-  await prisma.goodsItem.update({
-    where: { id: mciId },
-    data: { isMci: true },
+export async function markGoodsMciByIds(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+
+  await createManyInBatches(ids, MCI_MARK_BATCH_SIZE, async (batch) => {
+    await prisma.goodsItem.updateMany({
+      where: { id: { in: batch } },
+      data: { isMci: true },
+    });
+    return { count: batch.length };
   });
 }
 
@@ -262,4 +274,56 @@ export async function updateSingleGoodsStatus(goodsId: string, status: string): 
     data: { status },
   });
   return result.count;
+}
+
+/**
+ * Updates every packaging/goods unit covered by any packaging MCI subtree or goods-level MCI.
+ * Two SQL statements regardless of MCI count (used by dispatch/deliver all).
+ */
+export async function updateAllMciSubtreesStatus(
+  transportUnitId: string,
+  status: string
+): Promise<{ updatedPackaging: number; updatedGoods: number }> {
+  const updatedPackaging = await prisma.$executeRaw(Prisma.sql`
+    UPDATE "PackagingUnit" AS pu
+    SET status = ${status}
+    WHERE pu."transportUnitId" = ${transportUnitId}
+      AND (
+        pu."isMci" = 1
+        OR EXISTS (
+          SELECT 1
+          FROM "PackagingUnit" AS mci
+          WHERE mci."transportUnitId" = pu."transportUnitId"
+            AND mci."isMci" = 1
+            AND (pu.id = mci.id OR pu.path LIKE mci.path || '%')
+        )
+      )
+  `);
+
+  const updatedGoods = await prisma.$executeRaw(Prisma.sql`
+    UPDATE "GoodsItem" AS gi
+    SET status = ${status}
+    WHERE EXISTS (
+      SELECT 1
+      FROM "PackagingUnit" AS pu
+      WHERE pu.id = gi."packagingUnitId"
+        AND pu."transportUnitId" = ${transportUnitId}
+        AND (
+          gi."isMci" = 1
+          OR pu."isMci" = 1
+          OR EXISTS (
+            SELECT 1
+            FROM "PackagingUnit" AS mci
+            WHERE mci."transportUnitId" = pu."transportUnitId"
+              AND mci."isMci" = 1
+              AND (pu.id = mci.id OR pu.path LIKE mci.path || '%')
+          )
+        )
+    )
+  `);
+
+  return {
+    updatedPackaging: Number(updatedPackaging),
+    updatedGoods: Number(updatedGoods),
+  };
 }

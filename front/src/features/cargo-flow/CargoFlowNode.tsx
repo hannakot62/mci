@@ -8,7 +8,8 @@ const HANDLE_STYLE = { opacity: 0, width: 6, height: 6 };
 function CargoFlowNodeComponent({ data }: NodeProps): React.ReactElement {
   const d = data as CargoNodeData;
   const showTopHandle = d.kind !== 'transport';
-  const showBottomHandle = d.kind !== 'goods' && d.kind !== 'goods-summary';
+  const showBottomHandle =
+    d.kind !== 'goods' && d.kind !== 'goods-summary' && d.kind !== 'packaging-summary';
 
   const mciStyle: CSSProperties | undefined =
     d.isMci && d.mciAccent

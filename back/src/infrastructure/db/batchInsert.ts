@@ -1,6 +1,14 @@
 /**
  * Runs `createMany` in chunks to stay within SQLite parameter limits and avoid O(n) round-trips.
  */
+export function chunk<T>(items: T[], batchSize: number): T[][] {
+  const batches: T[][] = [];
+  for (let offset = 0; offset < items.length; offset += batchSize) {
+    batches.push(items.slice(offset, offset + batchSize));
+  }
+  return batches;
+}
+
 export async function createManyInBatches<T>(
   items: T[],
   batchSize: number,

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { getPrismaClient } from '../src/infrastructure/db/prisma';
-import { findMcis, markMci, updateStatusViaMci } from '../src/modules/mci/mci.service';
+import { findMcis, markMci, updateAllMcisStatus, updateStatusViaMci } from '../src/modules/mci/mci.service';
 import {
   createGoods,
   createPackaging,
@@ -337,7 +337,7 @@ describe('MCI algorithm', () => {
     const mciIds = await markMci(transportId);
     expect(mciIds).toContain(root.id);
 
-    await updateStatusViaMci(root.id, 'in_transit');
+    await updateAllMcisStatus(transportId, 'in_transit');
 
     const packagingStatuses = await prisma.packagingUnit.findMany({
       where: { transportUnitId: transportId },

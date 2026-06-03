@@ -27,7 +27,10 @@ export function SetupPanel({
     addProductGroup,
     removeProductGroup,
     handleSubmit,
+    setupValidationError,
   } = useSetupPanel(onGenerated);
+
+  const submitDisabled = loading || groups.length === 0 || setupValidationError !== null;
 
   return (
     <aside className="setup-panel">
@@ -75,11 +78,13 @@ export function SetupPanel({
             </Button>
           )}
 
-          <Button type="submit" variant="primary" disabled={loading || groups.length === 0}>
+          <Button type="submit" variant="primary" disabled={submitDisabled}>
             {loading ? 'Generating…' : 'generate & load'}
           </Button>
         </form>
-        {error && <p className="error-text">{error}</p>}
+        {(error || setupValidationError) && (
+          <p className="error-text">{error ?? setupValidationError}</p>
+        )}
       </SetupPanelScroll>
       <footer className="setup-panel__footer">made with excitement by @hannakot62 🤝 AI</footer>
     </aside>

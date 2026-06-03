@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   listProducts,
   setup,
@@ -6,7 +6,8 @@ import {
   type ProductCatalogItem,
   type ProductGroupConfig,
 } from '@/api/client';
-import { defaultGroup, nextTransportCode } from './setup.utils';
+import { SETUP_MAX_NESTING_LEVELS } from './setup.limits';
+import { defaultGroup, nextTransportCode, validateSetupProductGroups } from './setup.utils';
 import type { TransportType } from './setup.types';
 
 export function useSetupPanel(onGenerated: (transportId: string) => void) {
@@ -16,6 +17,8 @@ export function useSetupPanel(onGenerated: (transportId: string) => void) {
   const [groups, setGroups] = useState<ProductGroupConfig[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const setupValidationError = useMemo(() => validateSetupProductGroups(groups), [groups]);
 
   useEffect(() => {
     listProducts()
@@ -49,9 +52,10 @@ export function useSetupPanel(onGenerated: (transportId: string) => void) {
 
   const addNestingLevel = useCallback((groupIndex: number): void => {
     setGroups((prev) =>
-      prev.map((g, i) =>
-        i === groupIndex ? { ...g, nestingLevels: [...g.nestingLevels, { childCount: 1 }] } : g
-      )
+      prev.map((g, i) => {
+        if (i !== groupIndex || g.nestingLevels.length >= SETUP_MAX_NESTING_LEVELS) return g;
+        return { ...g, nestingLevels: [...g.nestingLevels, { childCount: 1 }] };
+      })
     );
   }, []);
 
@@ -83,6 +87,12 @@ export function useSetupPanel(onGenerated: (transportId: string) => void) {
       e.preventDefault();
       if (groups.length === 0) return;
 
+      const validationError = validateSetupProductGroups(groups);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
@@ -111,6 +121,7 @@ export function useSetupPanel(onGenerated: (transportId: string) => void) {
     groups,
     loading,
     error,
+    setupValidationError,
     updateGroup,
     updateNestingLevel,
     addNestingLevel,

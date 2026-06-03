@@ -9,8 +9,24 @@ import {
   resolveProductSkuInSubtree,
   shortSku,
 } from '@/features/mci/mciGraphTheme';
-import { defaultEdgeOptions, MAX_GOODS_PER_NODE, NODE_SIZE } from './cargoTree.constants';
+import {
+  CARGO_TREE_MAX_GRAPH_NODES,
+  defaultEdgeOptions,
+  MAX_GOODS_PER_NODE,
+  NODE_SIZE,
+} from './cargoTree.constants';
 import { layoutGraph } from './layoutGraph';
+import { buildOverviewFlowElements } from './buildOverviewFlowElements';
+import type { FlowGraphResult } from './buildFlowElements.types';
+import { countPackagingNodes } from './countPackagingNodes';
+import { mciLegendEntries, trackMciLegendEntry } from './mciLegendTracking';
+import {
+  buildPackagingMciExtras,
+  childWalkContext,
+  goodsDisplayAsMci,
+  packagingDisplayAsMci,
+  type MciWalkContext,
+} from './mciGraphVisibility';
 
 function truncateSerial(serial: string): string {
   return serial.length > 8 ? `${serial.slice(0, 8)}…` : serial;
@@ -20,11 +36,18 @@ function routeLabel(from: Location, to: Location): string {
   return `${from.code}→${to.code}`;
 }
 
-export function buildFlowElements(transport: TransportDetail): {
-  nodes: Node[];
-  edges: Edge[];
-  legend: MciLegendEntry[];
-} {
+export function buildFlowElements(transport: TransportDetail): FlowGraphResult {
+  const packagingCount = countPackagingNodes(transport.packagingTree);
+  if (packagingCount > CARGO_TREE_MAX_GRAPH_NODES) {
+    return buildOverviewFlowElements(transport, packagingCount);
+  }
+  return buildFullFlowElements(transport, packagingCount);
+}
+
+function buildFullFlowElements(
+  transport: TransportDetail,
+  packagingCount: number
+): FlowGraphResult {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const sizeFor = (kind: CargoNodeData['kind']) => NODE_SIZE[kind];
@@ -48,27 +71,19 @@ export function buildFlowElements(transport: TransportDetail): {
   const walkPackaging = (
     parentId: string,
     items: PackagingTreeNode[],
-    activeMciAccent?: string
+    ctx: MciWalkContext
   ): void => {
     for (const pkg of items) {
       const statusColor = MCI_STATUS_COLORS[pkg.status] ?? '#94a3b8';
+      const displayAsMci = packagingDisplayAsMci(pkg, ctx);
       let mciExtras: Partial<CargoNodeData> = {};
 
-      if (pkg.isMci) {
+      if (displayAsMci) {
+        mciExtras = buildPackagingMciExtras(pkg, productPalette);
         const sku = resolveProductSkuInSubtree(pkg);
         const palette = productPalette.get(sku);
-        const accent = palette?.accent ?? '#eab308';
-        const soft = palette?.soft ?? 'rgba(252, 211, 77, 0.34)';
-
-        mciExtras = {
-          mciProductSku: shortSku(sku),
-          mciAccent: accent,
-          mciSoft: soft,
-          mciStatusColor: statusColor,
-        };
-
         if (sku !== '—' && palette) {
-          legendBySku.set(sku, { sku, palette, status: pkg.status });
+          trackMciLegendEntry(legendBySku, sku, palette, pkg.status);
         }
       }
 
@@ -84,16 +99,19 @@ export function buildFlowElements(transport: TransportDetail): {
           route: routeLabel(pkg.firstLocation, pkg.lastLocation),
           status: pkg.status,
           statusColor,
-          isMci: pkg.isMci,
+          isMci: displayAsMci,
           ...mciExtras,
         } satisfies CargoNodeData,
         position: { x: 0, y: 0 },
       });
 
-      const branchAccent = pkg.isMci ? mciExtras.mciAccent : activeMciAccent;
-      const edgeStyle = branchAccent
-        ? { stroke: branchAccent, strokeWidth: pkg.isMci ? 2 : 1.5, opacity: 0.9 }
-        : undefined;
+      const childCtx = childWalkContext(pkg, ctx, mciExtras);
+      const edgeStyle =
+        displayAsMci && mciExtras.mciAccent
+          ? { stroke: mciExtras.mciAccent, strokeWidth: 2, opacity: 0.9 }
+          : childCtx.branchAccent && !childCtx.insideMciSubtree
+            ? { stroke: childCtx.branchAccent, strokeWidth: 1.5, opacity: 0.9 }
+            : undefined;
 
       edges.push({
         id: `${parentId}-${pkg.id}`,
@@ -105,9 +123,10 @@ export function buildFlowElements(transport: TransportDetail): {
       const visibleGoods = pkg.goods.slice(0, MAX_GOODS_PER_NODE);
       for (const good of visibleGoods) {
         let goodMciExtras: Partial<CargoNodeData> = {};
-        let goodAccent = branchAccent;
+        const showAsMci = goodsDisplayAsMci(good.isMci, childCtx);
+        let edgeAccent = childCtx.branchAccent;
 
-        if (good.isMci) {
+        if (showAsMci) {
           const sku = good.product.sku;
           const palette = productPalette.get(sku);
           const accent = palette?.accent ?? '#eab308';
@@ -122,10 +141,10 @@ export function buildFlowElements(transport: TransportDetail): {
             mciStatusColor: goodStatusColor,
             statusColor: goodStatusColor,
           };
-          goodAccent = accent;
+          edgeAccent = accent;
 
           if (palette) {
-            legendBySku.set(`${sku}@${good.id}`, { sku, palette, status: good.status });
+            trackMciLegendEntry(legendBySku, sku, palette, good.status);
           }
         }
 
@@ -148,12 +167,12 @@ export function buildFlowElements(transport: TransportDetail): {
           id: `${pkg.id}-${good.id}`,
           source: pkg.id,
           target: good.id,
-          ...(goodAccent
+          ...(edgeAccent && showAsMci
             ? {
                 style: {
-                  stroke: goodAccent,
-                  strokeWidth: good.isMci ? 2 : 1.25,
-                  opacity: good.isMci ? 0.9 : 0.55,
+                  stroke: edgeAccent,
+                  strokeWidth: 2,
+                  opacity: 0.9,
                 },
               }
             : {}),
@@ -178,11 +197,11 @@ export function buildFlowElements(transport: TransportDetail): {
         edges.push({ id: `${pkg.id}-${summaryId}`, source: pkg.id, target: summaryId });
       }
 
-      walkPackaging(pkg.id, pkg.children, branchAccent);
+      walkPackaging(pkg.id, pkg.children, childCtx);
     }
   };
 
-  walkPackaging(transport.id, transport.packagingTree);
+  walkPackaging(transport.id, transport.packagingTree, { insideMciSubtree: false });
 
   const laidOut = layoutGraph(nodes, edges);
   const styledEdges = edges.map((e) => ({
@@ -194,6 +213,8 @@ export function buildFlowElements(transport: TransportDetail): {
   return {
     nodes: laidOut,
     edges: styledEdges,
-    legend: [...legendBySku.values()],
+    legend: mciLegendEntries(legendBySku),
+    graphMode: 'full',
+    packagingCount,
   };
 }

@@ -1,19 +1,5 @@
-import type { ProductCatalogItem, ProductGroupConfig } from '@/api/client';
-import { SETUP_MAX_PACKAGING_UNITS } from './setup.limits';
-
-export function nextTransportCode(): string {
-  const n = Math.floor(Math.random() * 900) + 100;
-  return `TRK-${n}`;
-}
-
-export function defaultGroup(product: ProductCatalogItem): ProductGroupConfig {
-  return {
-    productSku: product.sku,
-    goodsCount: 10,
-    rootPackagingCount: 1,
-    nestingLevels: [{ childCount: 1 }],
-  };
-}
+import { SETUP_MAX_PACKAGING_UNITS } from '../../shared/constants/limits';
+import type { ProductGroupConfig } from './setup.types';
 
 /** Estimated packaging nodes for one product group (roots + all nested children). */
 export function estimatePackagingCount(group: ProductGroupConfig): number {
@@ -59,9 +45,4 @@ export function validateSetupProductGroups(groups: ProductGroupConfig[]): string
   }
 
   return null;
-}
-
-export function clampInt(value: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) return min;
-  return Math.min(max, Math.max(min, Math.trunc(value)));
 }

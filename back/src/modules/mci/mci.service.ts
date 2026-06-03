@@ -1,36 +1,45 @@
-import { recordTiming } from '../metrics/timer.service';
+import { recordTiming, TIMING_LABEL_FIND_MCI } from '../metrics/timer.service';
 import {
   findGoodsMciCandidates,
   findPackagingMciCandidates,
   getMcisForTransport,
   getMciEntity,
-  markGoodsMciById,
-  markPackagingMciById,
+  markGoodsMciByIds,
+  markPackagingMciByIds,
   unmarkAllMci,
+  updateAllMciSubtreesStatus,
   updateGoodsInSubtreeStatus,
   updatePackagingSubtreeStatus,
   updateSingleGoodsStatus,
 } from './mci.repository';
 
 export async function findMcis(transportUnitId: string): Promise<string[]> {
-  const packaging = await findPackagingMciCandidates(transportUnitId);
-  const goods = await findGoodsMciCandidates(transportUnitId);
-  return [...packaging.map((p) => p.id), ...goods.map((g) => g.id)];
+  return recordTiming(TIMING_LABEL_FIND_MCI, async () => {
+    const [packaging, goods] = await Promise.all([
+      findPackagingMciCandidates(transportUnitId),
+      findGoodsMciCandidates(transportUnitId),
+    ]);
+    return [...packaging.map((p) => p.id), ...goods.map((g) => g.id)];
+  });
 }
 
 export async function markMci(transportUnitId: string): Promise<string[]> {
   return recordTiming('markMci', async () => {
     await unmarkAllMci(transportUnitId);
 
-    const packagingCandidates = await findPackagingMciCandidates(transportUnitId);
-    for (const { id } of packagingCandidates) {
-      await markPackagingMciById(id);
-    }
+    const [packagingCandidates, goodsCandidates] = await recordTiming(
+      TIMING_LABEL_FIND_MCI,
+      async () =>
+        Promise.all([
+          findPackagingMciCandidates(transportUnitId),
+          findGoodsMciCandidates(transportUnitId),
+        ])
+    );
 
-    const goodsCandidates = await findGoodsMciCandidates(transportUnitId);
-    for (const { id } of goodsCandidates) {
-      await markGoodsMciById(id);
-    }
+    await Promise.all([
+      markPackagingMciByIds(packagingCandidates.map((p) => p.id)),
+      markGoodsMciByIds(goodsCandidates.map((g) => g.id)),
+    ]);
 
     return [...packagingCandidates.map((p) => p.id), ...goodsCandidates.map((g) => g.id)];
   });
@@ -72,21 +81,19 @@ export async function updateAllMcisStatus(
   transportUnitId: string,
   status: string
 ): Promise<{ mciIds: string[]; updatedPackaging: number; updatedGoods: number }> {
-  const mcis = await getMcisForTransport(transportUnitId);
-  if (mcis.length === 0) {
-    return { mciIds: [], updatedPackaging: 0, updatedGoods: 0 };
-  }
+  return recordTiming('UPDATE ALL MCIS', async () => {
+    const mcis = await getMcisForTransport(transportUnitId);
+    if (mcis.length === 0) {
+      return { mciIds: [], updatedPackaging: 0, updatedGoods: 0 };
+    }
 
-  let updatedPackaging = 0;
-  let updatedGoods = 0;
+    const { updatedPackaging, updatedGoods } = await updateAllMciSubtreesStatus(
+      transportUnitId,
+      status
+    );
 
-  for (const { id } of mcis) {
-    const result = await updateStatusViaMci(id, status);
-    updatedPackaging += result.updatedPackaging;
-    updatedGoods += result.updatedGoods;
-  }
-
-  return { mciIds: mcis.map((m) => m.id), updatedPackaging, updatedGoods };
+    return { mciIds: mcis.map((m) => m.id), updatedPackaging, updatedGoods };
+  });
 }
 
 export { getMcisForTransport };

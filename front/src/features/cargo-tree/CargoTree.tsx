@@ -7,10 +7,9 @@ import {
   useNodesState,
 } from '@xyflow/react';
 import type { TransportDetail } from '@/api/client';
-import type { MciLegendEntry } from '@/features/mci/MciLegend';
 import { MciLegend } from '@/features/mci/MciLegend';
 import { buildFlowElements } from './buildFlowElements';
-import { defaultEdgeOptions, nodeTypes } from './cargoTree.constants';
+import { CARGO_TREE_MAX_GRAPH_NODES, defaultEdgeOptions, nodeTypes } from './cargoTree.constants';
 
 interface CargoTreeProps {
   transport: TransportDetail | null;
@@ -21,7 +20,13 @@ export function CargoTree({ transport }: CargoTreeProps): React.ReactElement {
     () =>
       transport
         ? buildFlowElements(transport)
-        : { nodes: [], edges: [], legend: [] as MciLegendEntry[] },
+        : {
+            nodes: [],
+            edges: [],
+            legend: [],
+            graphMode: 'full' as const,
+            packagingCount: 0,
+          },
     [transport]
   );
 
@@ -47,6 +52,16 @@ export function CargoTree({ transport }: CargoTreeProps): React.ReactElement {
 
   return (
     <div className="cargo-tree">
+      {elements.graphMode === 'overview' && (
+        <div className="cargo-tree__mode-badge" role="status">
+          Overview mode · {elements.packagingCount.toLocaleString('en-US')} packaging units
+          <span className="cargo-tree__mode-badge-hint">
+            Large branches collapsed (full tree &gt;{' '}
+            {CARGO_TREE_MAX_GRAPH_NODES.toLocaleString('en-US')} nodes). MCI chips stay in the
+            action bar.
+          </span>
+        </div>
+      )}
       <ReactFlow
         nodes={nodes}
         edges={edges}

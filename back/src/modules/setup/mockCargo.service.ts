@@ -1,10 +1,14 @@
 import { randomUUID } from 'crypto';
 import type { PackagingType, Product } from '@prisma/client';
 import { getPrismaClient } from '../../infrastructure/db/prisma';
-import { createManyInBatches } from '../../infrastructure/db/batchInsert';
-import { SETUP_GOODS_INSERT_BATCH_SIZE } from '../../shared/constants/limits';
-import { recordTiming } from '../metrics/timer.service';
-import { markMci } from '../mci/mci.service';
+import { chunk } from '../../infrastructure/db/batchInsert';
+import { bulkInsertGoods, bulkInsertPackaging } from '../../infrastructure/db/bulkInsert';
+import {
+  SETUP_GOODS_INSERT_BATCH_SIZE,
+  SETUP_PACKAGING_INSERT_BATCH_SIZE,
+} from '../../shared/constants/limits';
+import { recordTiming, recordTimingSync, TIMING_LABEL_FIND_MCI } from '../metrics/timer.service';
+import { computeMockCargoMci } from './mciFromMockTree';
 import type { MockSummary } from './mockCargo.types';
 import { maybeAlternateRoute, pickRandomRoute, type LocationRef } from './randomLocations';
 import type { ProductGroupConfig } from './setup.types';
@@ -20,22 +24,42 @@ type PackagingRow = {
   packagingTypeId: string;
   firstLocationId: string;
   lastLocationId: string;
+  isMci: boolean;
 };
 
-function resolvePackagingType(
+type GoodsRow = {
+  id: string;
+  packagingUnitId: string;
+  productId: string;
+  firstLocationId: string;
+  lastLocationId: string;
+  isMci: boolean;
+};
+
+type LeafRef = {
+  id: string;
+  firstLocationId: string;
+  lastLocationId: string;
+};
+
+type PackagingTypeResolver = (depth: number, preferredName?: string) => PackagingType;
+
+function buildPackagingTypeResolver(
   types: PackagingType[],
-  product: Product,
-  depth: number,
-  preferredName?: string
-): PackagingType {
-  if (preferredName) {
-    const match = types.find((t) => t.name === preferredName);
-    if (match) return match;
-  }
+  product: Product
+): PackagingTypeResolver {
+  const byName = new Map(types.map((t) => [t.name, t]));
   const allowed = product.allowedPackagingTypes.split(',').map((s) => s.trim());
   const allowedTypes = types.filter((t) => allowed.includes(t.name));
   const pool = allowedTypes.length > 0 ? allowedTypes : types;
-  return pool[depth % pool.length];
+
+  return (depth: number, preferredName?: string) => {
+    if (preferredName) {
+      const match = byName.get(preferredName);
+      if (match) return match;
+    }
+    return pool[depth % pool.length];
+  };
 }
 
 function expandPackagingChildren(
@@ -45,16 +69,23 @@ function expandPackagingChildren(
   parentDepth: number,
   levelIndex: number,
   nestingLevels: ProductGroupConfig['nestingLevels'],
-  types: PackagingType[],
-  product: Product,
+  resolveType: PackagingTypeResolver,
   route: { firstLocationId: string; lastLocationId: string },
   locations: LocationRef[],
   rows: PackagingRow[],
-  leaves: string[]
+  rowById: Map<string, PackagingRow>,
+  leaves: LeafRef[]
 ): void {
   const levelConfig = nestingLevels[levelIndex];
   if (!levelConfig || levelConfig.childCount <= 0) {
-    leaves.push(parentId);
+    const parentRow = rowById.get(parentId);
+    if (parentRow) {
+      leaves.push({
+        id: parentId,
+        firstLocationId: parentRow.firstLocationId,
+        lastLocationId: parentRow.lastLocationId,
+      });
+    }
     return;
   }
 
@@ -63,9 +94,9 @@ function expandPackagingChildren(
     const path = `${parentPath}${id}/`;
     const depth = parentDepth + 1;
     const loc = maybeAlternateRoute(route, locations);
-    const packagingType = resolvePackagingType(types, product, depth, levelConfig.packagingTypeName);
+    const packagingType = resolveType(depth, levelConfig.packagingTypeName);
 
-    rows.push({
+    const row: PackagingRow = {
       id,
       transportUnitId: transportId,
       parentId,
@@ -74,7 +105,10 @@ function expandPackagingChildren(
       packagingTypeId: packagingType.id,
       firstLocationId: loc.firstLocationId,
       lastLocationId: loc.lastLocationId,
-    });
+      isMci: false,
+    };
+    rows.push(row);
+    rowById.set(id, row);
 
     const nextLevel = nestingLevels[levelIndex + 1];
     if (nextLevel && nextLevel.childCount > 0) {
@@ -85,15 +119,19 @@ function expandPackagingChildren(
         depth,
         levelIndex + 1,
         nestingLevels,
-        types,
-        product,
+        resolveType,
         route,
         locations,
         rows,
+        rowById,
         leaves
       );
     } else {
-      leaves.push(id);
+      leaves.push({
+        id,
+        firstLocationId: loc.firstLocationId,
+        lastLocationId: loc.lastLocationId,
+      });
     }
   }
 }
@@ -105,24 +143,21 @@ function buildProductGroup(
   types: PackagingType[],
   locations: LocationRef[],
   rows: PackagingRow[],
-  goodsRows: Array<{
-    packagingUnitId: string;
-    productId: string;
-    firstLocationId: string;
-    lastLocationId: string;
-  }>
+  rowById: Map<string, PackagingRow>,
+  goodsRows: GoodsRow[]
 ): void {
   const route = pickRandomRoute(locations);
-  const leaves: string[] = [];
+  const leaves: LeafRef[] = [];
   const roots = Math.max(1, group.rootPackagingCount);
+  const resolveType = buildPackagingTypeResolver(types, product);
 
   for (let r = 0; r < roots; r++) {
     const rootId = randomUUID();
     const path = `/${rootId}/`;
     const rootLoc = maybeAlternateRoute(route, locations);
-    const rootType = resolvePackagingType(types, product, 0, group.nestingLevels[0]?.packagingTypeName);
+    const rootType = resolveType(0, group.nestingLevels[0]?.packagingTypeName);
 
-    rows.push({
+    const rootRow: PackagingRow = {
       id: rootId,
       transportUnitId: transportId,
       parentId: null,
@@ -131,11 +166,18 @@ function buildProductGroup(
       packagingTypeId: rootType.id,
       firstLocationId: rootLoc.firstLocationId,
       lastLocationId: rootLoc.lastLocationId,
-    });
+      isMci: false,
+    };
+    rows.push(rootRow);
+    rowById.set(rootId, rootRow);
 
     const hasChildren = group.nestingLevels.some((l) => l.childCount > 0);
     if (!hasChildren) {
-      leaves.push(rootId);
+      leaves.push({
+        id: rootId,
+        firstLocationId: rootLoc.firstLocationId,
+        lastLocationId: rootLoc.lastLocationId,
+      });
     } else {
       expandPackagingChildren(
         transportId,
@@ -144,11 +186,11 @@ function buildProductGroup(
         0,
         0,
         group.nestingLevels,
-        types,
-        product,
+        resolveType,
         route,
         locations,
         rows,
+        rowById,
         leaves
       );
     }
@@ -159,17 +201,14 @@ function buildProductGroup(
   }
 
   for (let g = 0; g < group.goodsCount; g++) {
-    const leafId = leaves[g % leaves.length];
-    const leafRow = rows.find((row) => row.id === leafId);
-    const loc = leafRow
-      ? { firstLocationId: leafRow.firstLocationId, lastLocationId: leafRow.lastLocationId }
-      : route;
-
+    const leaf = leaves[g % leaves.length];
     goodsRows.push({
-      packagingUnitId: leafId,
+      id: randomUUID(),
+      packagingUnitId: leaf.id,
       productId: product.id,
-      firstLocationId: loc.firstLocationId,
-      lastLocationId: loc.lastLocationId,
+      firstLocationId: leaf.firstLocationId,
+      lastLocationId: leaf.lastLocationId,
+      isMci: false,
     });
   }
 }
@@ -178,20 +217,19 @@ export async function generateMockCargo(options: {
   transportCode: string;
   transportType: string;
   productGroups: ProductGroupConfig[];
-}): Promise<{ transportUnitId: string; summary: MockSummary }> {
-  const locations = await prisma.location.findMany({
-    select: { id: true, code: true },
-  });
+}): Promise<{ transportUnitId: string; summary: MockSummary; mciIds: string[] }> {
+  const [locations, packagingTypes, products] = await Promise.all([
+    prisma.location.findMany({ select: { id: true, code: true } }),
+    prisma.packagingType.findMany(),
+    prisma.product.findMany(),
+  ]);
+
   if (locations.length < 2) {
     throw new Error('At least two locations required');
   }
-
-  const packagingTypes = await prisma.packagingType.findMany();
   if (packagingTypes.length === 0) {
     throw new Error('No packaging types configured');
   }
-
-  const products = await prisma.product.findMany();
   if (products.length === 0) {
     throw new Error('No products configured');
   }
@@ -208,12 +246,8 @@ export async function generateMockCargo(options: {
   );
 
   const packagingRows: PackagingRow[] = [];
-  const goodsRows: Array<{
-    packagingUnitId: string;
-    productId: string;
-    firstLocationId: string;
-    lastLocationId: string;
-  }> = [];
+  const rowById = new Map<string, PackagingRow>();
+  const goodsRows: GoodsRow[] = [];
 
   for (const group of options.productGroups) {
     const product = productBySku.get(group.productSku);
@@ -227,34 +261,47 @@ export async function generateMockCargo(options: {
       packagingTypes,
       locations,
       packagingRows,
+      rowById,
       goodsRows
     );
   }
 
-  await recordTiming('create:packaging_tree', async () => {
-    if (packagingRows.length > 0) {
-      await prisma.packagingUnit.createMany({ data: packagingRows });
-    }
-  });
+  const { packagingMciIds, goodsMciIndices } = recordTimingSync(TIMING_LABEL_FIND_MCI, () =>
+    computeMockCargoMci(packagingRows, goodsRows)
+  );
+  for (const id of packagingMciIds) {
+    rowById.get(id)!.isMci = true;
+  }
+  for (const index of goodsMciIndices) {
+    goodsRows[index].isMci = true;
+  }
 
-  await recordTiming('create:goods_items', async () => {
-    await createManyInBatches(goodsRows, SETUP_GOODS_INSERT_BATCH_SIZE, (batch) =>
-      prisma.goodsItem.createMany({ data: batch })
+  const mciIds = [
+    ...packagingMciIds,
+    ...[...goodsMciIndices].map((index) => goodsRows[index].id),
+  ];
+
+  await recordTiming('create:packaging_tree', async () => {
+    await bulkInsertPackaging(
+      prisma,
+      packagingRows,
+      chunk(packagingRows, SETUP_PACKAGING_INSERT_BATCH_SIZE)
     );
   });
 
-  const mciIds = await markMci(transport.id);
-
-  const goodsCount = goodsRows.length;
+  await recordTiming('create:goods_items', async () => {
+    await bulkInsertGoods(prisma, goodsRows, chunk(goodsRows, SETUP_GOODS_INSERT_BATCH_SIZE));
+  });
 
   return {
     transportUnitId: transport.id,
     summary: {
       transportCode: options.transportCode,
       packagingCount: packagingRows.length,
-      goodsCount,
+      goodsCount: goodsRows.length,
       productGroupCount: options.productGroups.length,
       mciCount: mciIds.length,
     },
+    mciIds,
   };
 }

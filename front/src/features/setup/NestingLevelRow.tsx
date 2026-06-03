@@ -1,5 +1,6 @@
 import React from 'react';
 import { IconButton, RangeInput, TrashIcon } from '@/components/common';
+import { SETUP_MAX_NESTING_CHILD_COUNT } from './setup.limits';
 
 interface NestingLevelRowProps {
   levelIndex: number;
@@ -19,7 +20,7 @@ export function NestingLevelRow({
       <RangeInput
         label={`Level ${levelIndex + 1}`}
         min={0}
-        max={5}
+        max={SETUP_MAX_NESTING_CHILD_COUNT}
         value={childCount}
         onChange={onChange}
       />

@@ -1,9 +1,15 @@
 import type { FastifyInstance } from 'fastify';
 import { getTimings } from '../metrics/timer.store';
-import { getMcisForTransport } from '../mci/mci.service';
-import { SETUP_MAX_GOODS_COUNT, SETUP_MIN_GOODS_COUNT } from '../../shared/constants/limits';
+import {
+  SETUP_MAX_GOODS_COUNT,
+  SETUP_MAX_NESTING_CHILD_COUNT,
+  SETUP_MAX_NESTING_LEVELS,
+  SETUP_MAX_ROOT_PACKAGING_COUNT,
+  SETUP_MIN_GOODS_COUNT,
+} from '../../shared/constants/limits';
 import { generateMockCargo } from './mockCargo.service';
 import type { ProductGroupConfig, SetupBody } from './setup.types';
+import { validateSetupProductGroups } from './setup.validation';
 import { listAllLocations } from '../transport/transport.service';
 import { getPrismaClient } from '../../infrastructure/db/prisma';
 
@@ -16,11 +22,16 @@ function normalizeProductGroups(groups: ProductGroupConfig[]): ProductGroupConfi
       SETUP_MAX_GOODS_COUNT,
       Math.max(SETUP_MIN_GOODS_COUNT, g.goodsCount)
     ),
-    rootPackagingCount: Math.max(1, g.rootPackagingCount ?? 1),
-    nestingLevels: (g.nestingLevels ?? []).map((l) => ({
-      childCount: Math.max(0, Math.min(20, l.childCount)),
-      packagingTypeName: l.packagingTypeName,
-    })),
+    rootPackagingCount: Math.max(
+      1,
+      Math.min(SETUP_MAX_ROOT_PACKAGING_COUNT, g.rootPackagingCount ?? 1)
+    ),
+    nestingLevels: (g.nestingLevels ?? [])
+      .slice(0, SETUP_MAX_NESTING_LEVELS)
+      .map((l) => ({
+        childCount: Math.max(0, Math.min(SETUP_MAX_NESTING_CHILD_COUNT, l.childCount)),
+        packagingTypeName: l.packagingTypeName,
+      })),
   }));
 }
 
@@ -68,19 +79,23 @@ export function registerSetupRoutes(fastify: FastifyInstance): void {
       return { error: 'Invalid product groups' };
     }
 
+    const setupError = validateSetupProductGroups(productGroups);
+    if (setupError) {
+      reply.code(400);
+      return { error: setupError };
+    }
+
     try {
-      const { transportUnitId, summary } = await generateMockCargo({
+      const { transportUnitId, summary, mciIds } = await generateMockCargo({
         transportCode,
         transportType,
         productGroups,
       });
 
-      const mcis = await getMcisForTransport(transportUnitId);
-
       reply.code(200);
       return {
         transportUnitId,
-        mciIds: mcis.map((m) => m.id),
+        mciIds,
         summary,
         timings: getTimings(),
       };

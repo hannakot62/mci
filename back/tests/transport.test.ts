@@ -247,8 +247,9 @@ describe('Transport API integration', () => {
     });
 
     expect(metrics.statusCode).toBe(200);
-    const entries = metrics.json() as Array<{ durationMs: number }>;
+    const entries = metrics.json() as Array<{ durationMs: number; label?: string }>;
     expect(entries.length).toBeGreaterThan(0);
+    expect(entries.some((e) => e.label === 'FIND MCI')).toBe(true);
   });
 
   it('POST /api/setup without productGroups → 400', async () => {
@@ -262,5 +263,29 @@ describe('Transport API integration', () => {
     });
 
     expect(response.statusCode).toBe(400);
+  });
+
+  it('POST /api/setup with excessive packaging estimate → 400', async () => {
+    const sku = await firstProductSku();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/setup',
+      payload: {
+        transportCode: 'TRK-TOO-BIG',
+        transportType: 'truck',
+        productGroups: [
+          {
+            productSku: sku,
+            goodsCount: 100,
+            rootPackagingCount: 100,
+            nestingLevels: [{ childCount: 32 }, { childCount: 47 }],
+          },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    const body = response.json() as { error: string };
+    expect(body.error).toMatch(/packaging units exceeds/i);
   });
 });
