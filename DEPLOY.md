@@ -71,16 +71,16 @@ npm start
 
 ## Шаг 4. Связать фронт с API
 
-1. GitHub → репозиторий → **Settings** → **Secrets and variables** → **Actions** → **Variables**
-2. **New repository variable**:
+1. GitHub → **Settings** → **Secrets and variables** → **Actions** → **Variables**  
+   **или** **Environments** → **github-pages** → **Environment secrets** (как у вас на скриншоте).
 
-   | Name           | Value                          |
-   |----------------|--------------------------------|
+   | Name | Value |
+   |------|--------|
    | `VITE_API_URL` | `https://mci-api-xxxx.onrender.com` |
 
-   Без `/` в конце.
+   Без `/` в конце. Secret окружения `github-pages` подхватывается workflow при сборке.
 
-3. **Actions** → workflow **Deploy frontend to GitHub Pages** → **Run workflow** (или push в `main`)
+2. **Actions** → workflow **Deploy frontend to GitHub Pages** → **Run workflow** (или push в `main`)
 
 После пересборки приложение на Pages ходит на ваш API.
 
