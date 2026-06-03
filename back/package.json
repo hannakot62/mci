@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "start": "node dist/bootstrap/startServer.js",
+    "start": "node dist/server.js",
     "postinstall": "prisma generate",
     "build": "tsc",
     "test": "vitest run",
